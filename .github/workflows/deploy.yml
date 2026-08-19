@@ -38,6 +38,7 @@ jobs:
             printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
             printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
             printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
+            printf 'COOKIE_SECURE=false\n'
             printf 'SESSION_TTL_HOURS=12\n'
           } > /tmp/lb26.env
 

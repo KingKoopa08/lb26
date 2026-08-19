@@ -26,7 +26,9 @@ function cookies(request) {
 }
 
 function sessionCookie(token, maxAgeSeconds) {
-  const secure = process.env.NODE_ENV === 'production' ? '; Secure' : '';
+  // Secure by default. The override supports the temporary direct-IP HTTP URL
+  // until the campaign domain and HTTPS reverse proxy are ready.
+  const secure = process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false' ? '; Secure' : '';
   return `lb26_admin=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAgeSeconds}${secure}`;
 }
 
