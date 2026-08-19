@@ -47,6 +47,20 @@ export async function bootstrapAdmin() {
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required');
   if (password.length < 14) throw new Error('ADMIN_PASSWORD must be at least 14 characters');
+  if (process.env.SYNC_ADMIN_CREDENTIALS === 'true') {
+    const existing = await pool.query('SELECT id,email,password_hash,active FROM admin_users ORDER BY id LIMIT 1');
+    if (existing.rowCount) {
+      const admin = existing.rows[0];
+      if (admin.email === email && admin.active && verifyPassword(password, admin.password_hash)) return;
+      await pool.query(
+        'UPDATE admin_users SET email=$1, password_hash=$2, active=true WHERE id=$3',
+        [email, hashPassword(password), admin.id],
+      );
+      await pool.query('DELETE FROM admin_sessions WHERE user_id=$1', [admin.id]);
+      console.info(`Synchronized initial admin user: ${email}`);
+      return;
+    }
+  }
   if ((await pool.query('SELECT id FROM admin_users LIMIT 1')).rowCount) return;
   await pool.query('INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, $3)', [email, hashPassword(password), 'admin']);
   console.info(`Created initial admin user: ${email}`);
