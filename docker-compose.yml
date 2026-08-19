@@ -1,0 +1,7 @@
+services:
+  web:
+    build: .
+    container_name: lb26-web
+    restart: unless-stopped
+    ports:
+      - "8098:80"
