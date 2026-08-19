@@ -22,7 +22,10 @@ jobs:
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
         run: |
+          test "$VPS_HOST" = "15.204.85.154" || { echo "VPS_HOST does not match the LB26 server"; exit 1; }
+          test "$VPS_USER" = "debian" || { echo "VPS_USER must be debian"; exit 1; }
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/lb26_deploy
           chmod 600 ~/.ssh/lb26_deploy
