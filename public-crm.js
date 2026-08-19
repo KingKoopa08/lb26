@@ -4,7 +4,7 @@ let eventsLoaded=false;
 function wire(){
   document.querySelectorAll('button').forEach(button=>{if(button.dataset.crmWired)return;const text=button.textContent.trim().toLowerCase();let type=null;if(text.includes('offer my living room')||text==='host an event')type='house_party';if(type){button.dataset.crmWired='1';button.addEventListener('click',event=>{event.preventDefault();event.stopImmediatePropagation();location.assign(`${involvement}?type=${type}`)},{capture:true})}});
   if(eventsLoaded)return;
-  const marker=[...document.querySelectorAll('span')].find(el=>el.textContent.trim()==='SAMPLE DATES');
+  const marker=document.getElementById('live-event-status');
   const list=marker?.parentElement?.nextElementSibling;
   if(!list)return;
   eventsLoaded=true;marker.hidden=true;
