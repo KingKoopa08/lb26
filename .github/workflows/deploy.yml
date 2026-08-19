@@ -18,6 +18,29 @@ jobs:
       - name: Build deployment archive
         run: tar --exclude=.git --exclude=.github -czf /tmp/lb26-release.tgz .
 
+      - name: Build production environment
+        env:
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          test -n "$POSTGRES_DB"
+          test -n "$POSTGRES_USER"
+          test -n "$POSTGRES_PASSWORD"
+          test -n "$ADMIN_EMAIL"
+          test "${#ADMIN_PASSWORD}" -ge 14
+          umask 077
+          {
+            printf 'POSTGRES_DB=%s\n' "$POSTGRES_DB"
+            printf 'POSTGRES_USER=%s\n' "$POSTGRES_USER"
+            printf 'POSTGRES_PASSWORD=%s\n' "$POSTGRES_PASSWORD"
+            printf 'ADMIN_EMAIL=%s\n' "$ADMIN_EMAIL"
+            printf 'ADMIN_PASSWORD=%s\n' "$ADMIN_PASSWORD"
+            printf 'SESSION_TTL_HOURS=12\n'
+          } > /tmp/lb26.env
+
       - name: Configure SSH
         env:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -33,15 +56,15 @@ jobs:
           ssh-keygen -lf ~/.ssh/lb26_deploy.pub
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
 
-      - name: Upload release
+      - name: Upload release and environment
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-        run: scp -i ~/.ssh/lb26_deploy /tmp/lb26-release.tgz "$VPS_USER@$VPS_HOST:/tmp/lb26-release.tgz"
+        run: scp -i ~/.ssh/lb26_deploy /tmp/lb26-release.tgz /tmp/lb26.env "$VPS_USER@$VPS_HOST:/tmp/"
 
       - name: Deploy and verify
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh -i ~/.ssh/lb26_deploy "$VPS_USER@$VPS_HOST" 'sudo mkdir -p /opt/apps/lb26 && sudo chown -R "$(id -u):$(id -g)" /opt/apps/lb26 && tar -xzf /tmp/lb26-release.tgz -C /opt/apps/lb26 && cd /opt/apps/lb26 && docker compose up -d --build && rm -f /tmp/lb26-release.tgz && for i in 1 2 3 4 5 6; do curl -fsS http://127.0.0.1:8098/health && exit 0; sleep 5; done; docker compose logs --tail=100; exit 1'
+          ssh -i ~/.ssh/lb26_deploy "$VPS_USER@$VPS_HOST" 'sudo mkdir -p /opt/apps/lb26 && sudo chown -R "$(id -u):$(id -g)" /opt/apps/lb26 && tar -xzf /tmp/lb26-release.tgz -C /opt/apps/lb26 && install -m 600 /tmp/lb26.env /opt/apps/lb26/.env && cd /opt/apps/lb26 && docker compose up -d --build && rm -f /tmp/lb26-release.tgz /tmp/lb26.env && for i in 1 2 3 4 5 6; do curl -fsS http://127.0.0.1:8098/health && exit 0; sleep 5; done; docker compose logs --tail=100; exit 1'
