@@ -25,6 +25,10 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_REPLY_TO: ${{ secrets.RESEND_REPLY_TO }}
+          RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
         run: |
           test -n "$POSTGRES_DB"
           test -n "$POSTGRES_USER"
@@ -41,6 +45,10 @@ jobs:
             printf 'SYNC_ADMIN_CREDENTIALS=true\n'
             printf 'COOKIE_SECURE=false\n'
             printf 'SESSION_TTL_HOURS=12\n'
+            printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
+            printf 'RESEND_FROM_EMAIL=%s\n' "$RESEND_FROM_EMAIL"
+            printf 'RESEND_REPLY_TO=%s\n' "$RESEND_REPLY_TO"
+            printf 'RESEND_WEBHOOK_SECRET=%s\n' "$RESEND_WEBHOOK_SECRET"
           } > /tmp/lb26.env
 
       - name: Configure SSH

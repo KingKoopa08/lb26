@@ -8,6 +8,25 @@
 4. Use **Events** to create drafts. Confirm the venue, time zone, accessibility notes, capacity, and campaign contact before changing an event to `published`.
 5. Export CSV only when operationally necessary. Store exports in an approved campaign location and delete working copies when finished.
 
+## Campaign email and Resend
+
+The **Email** admin section is installed but remains safely disabled until all required Resend settings exist. The dashboard shows unread, unassigned, and follow-up email counts. Staff can read threads, assign ownership, link or create CRM contacts, add private notes, mark follow-up state, archive, report spam, and reply with up to five attachments totaling 8 MB.
+
+Before activation:
+
+1. Create the campaign Resend account and verify a dedicated sending domain.
+2. Configure a Resend receiving domain. Prefer an email subdomain so enabling inbound MX records does not unexpectedly replace an existing mailbox provider.
+3. Add a Resend webhook pointing to `https://CAMPAIGN-DOMAIN/api/webhooks/resend` for `email.received`, `email.sent`, `email.delivered`, `email.delivery_delayed`, `email.bounced`, `email.complained`, and `email.failed`.
+4. Add these protected GitHub production secrets: `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_REPLY_TO`, and `RESEND_WEBHOOK_SECRET`.
+5. Redeploy, then confirm `/api/admin/email/status` reports `enabled: true` while authenticated.
+6. Send a real inbound test email, confirm it appears once in the inbox, reply from admin, and confirm threading and delivery status.
+
+Resend webhook signatures are checked against the raw request body. Duplicate webhook IDs are ignored. Failed inbound processing is left retryable. Never paste API keys or webhook signing secrets into issues, chat, logs, or source control.
+
+Inbound HTML is stored for future safe rendering, but the admin deliberately displays the plain-text body so untrusted email markup cannot execute. Attachment metadata is shown without rendering executable content inline. Executable outbound attachments are blocked.
+
+To disable email immediately, clear any one of `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, or `RESEND_WEBHOOK_SECRET` and redeploy. Existing email records remain available for campaign retention and incident review.
+
 ## Event states
 
 - `draft`: staff only.

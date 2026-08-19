@@ -5,6 +5,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { bootstrapAdmin, digestToken, migrate, pool, verifyPassword } from './db.js';
 import { registerRoutes } from './routes.js';
+import { registerEmailRoutes } from './email-routes.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -16,7 +17,7 @@ app.set('trust proxy', 1);
 app.disable('x-powered-by');
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
-app.use(express.json({ limit: '32kb' }));
+app.use(express.json({ limit: '12mb', verify: (request, _response, buffer) => { request.rawBody = Buffer.from(buffer); } }));
 
 function cookies(request) {
   return Object.fromEntries((request.headers.cookie || '').split(';').filter(Boolean).map((item) => {
@@ -99,6 +100,7 @@ app.post('/admin/login', async (request, response, next) => {
 app.get('/api/admin/session', requireAdmin, (request, response) => response.json({ email: request.adminSession.email, role: request.adminSession.role, csrfToken: request.adminSession.csrf_token }));
 
 registerRoutes(app, { pool, requireAdmin });
+registerEmailRoutes(app, { pool, requireAdmin });
 
 app.post('/admin/logout', requireAdmin, async (request, response, next) => {
   try {
@@ -111,6 +113,7 @@ app.post('/admin/logout', requireAdmin, async (request, response, next) => {
 });
 
 app.get('/admin/admin.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.css')));
+app.get('/admin/email.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'email.css')));
 app.get('/admin/admin.js', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.js')));
 app.get('/admin', requireAdmin, (_request, response) => response.sendFile(path.join(root, 'admin', 'index.html')));
 app.use('/assets', express.static(path.join(root, 'assets'), { maxAge: '1d' }));

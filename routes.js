@@ -91,13 +91,15 @@ export function registerRoutes(app, { pool, requireAdmin }) {
 
   app.get('/api/admin/dashboard', requireAdmin, async (_request, response, next) => {
     try {
-      const [counts, recent, upcoming, overdue] = await Promise.all([
+      const [counts, recent, upcoming, overdue, emailCounts, recentEmails] = await Promise.all([
         pool.query(`SELECT request_type,count(*)::int FROM crm_requests WHERE status='new' GROUP BY request_type`),
         pool.query(`SELECT r.id,r.request_type,r.status,r.created_at,c.id contact_id,c.first_name,c.last_name,c.email,c.phone FROM crm_requests r JOIN contacts c ON c.id=r.contact_id ORDER BY r.created_at DESC LIMIT 12`),
         pool.query(`SELECT e.id,e.title,e.starts_at,e.status,count(r.id)::int rsvp_count FROM events e LEFT JOIN event_rsvps r ON r.event_id=e.id AND r.status<>'canceled' WHERE e.starts_at>=now() GROUP BY e.id ORDER BY e.starts_at LIMIT 8`),
         pool.query(`SELECT count(*)::int AS count FROM crm_requests WHERE status NOT IN ('completed','declined','duplicate','spam') AND next_follow_up_at<now()`),
+        pool.query(`SELECT count(*) FILTER (WHERE status='open' AND unread)::int unread,count(*) FILTER (WHERE status='open' AND assigned_user_id IS NULL)::int unassigned,count(*) FILTER (WHERE status='open' AND needs_follow_up)::int follow_up FROM email_conversations`),
+        pool.query(`SELECT c.id,c.subject,c.last_message_at,m.from_address FROM email_conversations c LEFT JOIN LATERAL (SELECT from_address FROM email_messages WHERE conversation_id=c.id AND direction='inbound' ORDER BY created_at DESC LIMIT 1) m ON true WHERE c.status='open' AND c.unread ORDER BY c.last_message_at DESC LIMIT 5`),
       ]);
-      response.json({ newRequests: Object.fromEntries(counts.rows.map((r) => [r.request_type,r.count])), recent: recent.rows, upcoming: upcoming.rows, overdue: overdue.rows[0].count });
+      response.json({ newRequests: Object.fromEntries(counts.rows.map((r) => [r.request_type,r.count])), recent: recent.rows, upcoming: upcoming.rows, overdue: overdue.rows[0].count, email: emailCounts.rows[0], recentEmails: recentEmails.rows });
     } catch (error) { next(error); }
   });
 
