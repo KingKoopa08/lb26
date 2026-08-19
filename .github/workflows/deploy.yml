@@ -26,6 +26,8 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/lb26_deploy
           chmod 600 ~/.ssh/lb26_deploy
+          ssh-keygen -y -f ~/.ssh/lb26_deploy > ~/.ssh/lb26_deploy.pub
+          ssh-keygen -lf ~/.ssh/lb26_deploy.pub
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
 
       - name: Upload release
