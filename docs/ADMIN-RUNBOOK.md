@@ -32,6 +32,10 @@ Never restore over production without taking a fresh backup and stopping campaig
 
 Admin passwords are stored only as scrypt hashes. Do not place passwords in GitHub issues, chat, logs, or commits. Database and bootstrap credentials belong in the deployment host's protected `.env` file.
 
+## Privacy requests
+
+Contact anonymization is a deliberate admin-only operation that requires the literal confirmation `ANONYMIZE`. It clears direct identifiers, addresses, private notes, request payloads, assignments, and follow-up dates while retaining non-identifying request/event counts for campaign reporting. Confirm the requester's identity and campaign retention obligations before using it.
+
 ## Incident response
 
 If supporter data may be exposed, stop admin access, preserve audit logs, rotate affected credentials, document the time window and affected records, and notify campaign leadership. Do not delete audit records during investigation.

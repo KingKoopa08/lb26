@@ -80,6 +80,7 @@ export function registerRoutes(app, { pool, requireAdmin }) {
         details.rsvpStatus = rsvpStatus;
       }
       const created = await client.query(`INSERT INTO crm_requests (contact_id,request_type,source,details) VALUES ($1,$2,$3,$4) RETURNING id`, [contact.id,requestType,clean(request.body.source||'website',100),JSON.stringify(details)]);
+      await client.query(`INSERT INTO consent_events (contact_id,consent,source) VALUES ($1,$2,$3)`,[contact.id,request.body.consent===true||request.body.consent==='true',clean(request.body.source||'website',100)]);
       await client.query('COMMIT');
       response.status(201).json({ ok: true, requestId: created.rows[0].id, rsvpStatus: eventRsvp?.rows[0]?.status || null });
     } catch (error) { await client.query('ROLLBACK'); next(error); } finally { client.release(); }
@@ -153,6 +154,21 @@ export function registerRoutes(app, { pool, requireAdmin }) {
       await pool.query(`INSERT INTO audit_events (actor_user_id,action,target_type,target_id,ip_address) VALUES ($1,'task.created','follow_up_task',$2,$3)`,[request.adminSession.user_id,String(result.rows[0].id),request.ip]);
       response.status(201).json({task:result.rows[0]});
     } catch(error){next(error);}
+  });
+
+  app.post('/api/admin/contacts/:id/anonymize', requireAdmin, requireCsrf, async (request,response,next)=>{
+    const client=await pool.connect();
+    try {
+      if(request.body.confirm!=='ANONYMIZE') return response.status(400).json({error:'Explicit ANONYMIZE confirmation is required.'});
+      await client.query('BEGIN');
+      const id=integer(request.params.id);
+      const result=await client.query(`UPDATE contacts SET first_name='Deleted',last_name='Contact',email=NULL,phone=NULL,address_line1=NULL,address_line2=NULL,city=NULL,postal_code=NULL,preferred_contact=NULL,consent=false,owner_user_id=NULL,next_follow_up_at=NULL,deleted_at=now(),updated_at=now() WHERE id=$1 AND deleted_at IS NULL RETURNING id`,[id]);
+      if(!result.rowCount){await client.query('ROLLBACK');return response.status(404).json({error:'Active contact not found.'})}
+      await client.query('DELETE FROM contact_notes WHERE contact_id=$1',[id]);
+      await client.query(`UPDATE crm_requests SET details='{}'::jsonb,updated_at=now() WHERE contact_id=$1`,[id]);
+      await client.query(`INSERT INTO audit_events (actor_user_id,action,target_type,target_id,ip_address) VALUES ($1,'contact.anonymized','contact',$2,$3)`,[request.adminSession.user_id,String(id),request.ip]);
+      await client.query('COMMIT');response.json({ok:true});
+    } catch(error){await client.query('ROLLBACK');next(error)}finally{client.release()}
   });
 
   app.patch('/api/admin/tasks/:id', requireAdmin, requireCsrf, async (request,response,next)=>{
