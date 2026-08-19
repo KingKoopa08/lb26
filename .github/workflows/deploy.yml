@@ -44,4 +44,4 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh -i ~/.ssh/lb26_deploy "$VPS_USER@$VPS_HOST" 'mkdir -p /opt/apps/lb26 && tar -xzf /tmp/lb26-release.tgz -C /opt/apps/lb26 && cd /opt/apps/lb26 && docker compose up -d --build && rm -f /tmp/lb26-release.tgz && for i in 1 2 3 4 5 6; do curl -fsS http://127.0.0.1:8098/health && exit 0; sleep 5; done; docker compose logs --tail=100; exit 1'
+          ssh -i ~/.ssh/lb26_deploy "$VPS_USER@$VPS_HOST" 'sudo mkdir -p /opt/apps/lb26 && sudo chown -R "$(id -u):$(id -g)" /opt/apps/lb26 && tar -xzf /tmp/lb26-release.tgz -C /opt/apps/lb26 && cd /opt/apps/lb26 && docker compose up -d --build && rm -f /tmp/lb26-release.tgz && for i in 1 2 3 4 5 6; do curl -fsS http://127.0.0.1:8098/health && exit 0; sleep 5; done; docker compose logs --tail=100; exit 1'
