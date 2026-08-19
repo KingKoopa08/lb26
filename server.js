@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
 import { bootstrapAdmin, digestToken, migrate, pool, verifyPassword } from './db.js';
+import { registerRoutes } from './routes.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -41,7 +42,10 @@ async function readSession(request) {
 async function requireAdmin(request, response, next) {
   try {
     request.adminSession = await readSession(request);
-    if (!request.adminSession) return response.redirect(303, '/admin/login');
+    if (!request.adminSession) {
+      if (request.path.startsWith('/api/')) return response.status(401).json({ error: 'Authentication required.' });
+      return response.redirect(303, '/admin/login');
+    }
     next();
   } catch (error) { next(error); }
 }
@@ -92,6 +96,8 @@ app.post('/admin/login', async (request, response, next) => {
 
 app.get('/api/admin/session', requireAdmin, (request, response) => response.json({ email: request.adminSession.email, role: request.adminSession.role, csrfToken: request.adminSession.csrf_token }));
 
+registerRoutes(app, { pool, requireAdmin });
+
 app.post('/admin/logout', requireAdmin, async (request, response, next) => {
   try {
     if (!request.body.csrf || request.body.csrf !== request.adminSession.csrf_token) return response.status(403).send('Invalid request token');
@@ -103,12 +109,22 @@ app.post('/admin/logout', requireAdmin, async (request, response, next) => {
 });
 
 app.get('/admin/admin.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.css')));
+app.get('/admin/admin.js', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.js')));
 app.get('/admin', requireAdmin, (_request, response) => response.sendFile(path.join(root, 'admin', 'index.html')));
 app.use('/assets', express.static(path.join(root, 'assets'), { maxAge: '1d' }));
 app.get('/support.js', (_request, response) => response.sendFile(path.join(root, 'support.js')));
+app.get('/public-crm.js', (_request, response) => response.sendFile(path.join(root, 'public-crm.js')));
+app.get('/involvement.js', (_request, response) => response.sendFile(path.join(root, 'involvement.js')));
+app.get('/involvement.css', (_request, response) => response.sendFile(path.join(root, 'involvement.css')));
+app.get('/get-involved', (_request, response) => response.sendFile(path.join(root, 'get-involved.html')));
 app.get('/', (_request, response) => response.sendFile(path.join(root, 'index.html')));
 app.use((_request, response) => response.status(404).send('Not found'));
-app.use((error, _request, response, _next) => { console.error(error.message); response.status(500).send('Internal server error'); });
+app.use((error, request, response, _next) => {
+  const status = Number(error.status) >= 400 && Number(error.status) < 500 ? Number(error.status) : 500;
+  console.error(`${request.method} ${request.path}: ${error.message}`);
+  if (request.path.startsWith('/api/')) return response.status(status).json({ error: status === 500 ? 'Internal server error.' : error.message });
+  response.status(status).send(status === 500 ? 'Internal server error' : error.message);
+});
 
 await migrate();
 await bootstrapAdmin();
