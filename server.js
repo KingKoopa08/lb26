@@ -18,6 +18,14 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.json({ limit: '32kb' }));
 
+// Admin pages must never be satisfied by a stale copy of the public site.
+app.use(['/admin', '/admin/*path'], (_request, response, next) => {
+  response.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
+  response.set('Pragma', 'no-cache');
+  response.set('Expires', '0');
+  next();
+});
+
 function cookies(request) {
   return Object.fromEntries((request.headers.cookie || '').split(';').filter(Boolean).map((item) => {
     const index = item.indexOf('=');
