@@ -73,7 +73,10 @@ export function registerRoutes(app, { pool, requireAdmin }) {
         if (!eventResult.rowCount) throw Object.assign(new Error('That event is not available.'), { status: 404 });
         const event = eventResult.rows[0];
         const reservedResult = await client.query(`SELECT COALESCE(SUM(guest_count),0)::int AS reserved FROM event_rsvps WHERE event_id=$1 AND status IN ('confirmed','checked_in')`, [event.id]);
-        const rsvpStatus = event.capacity && reservedResult.rows[0].reserved + guests > event.capacity ? (event.waitlist_enabled ? 'waitlisted' : null) : 'confirmed';
+        const priorResult = await client.query(`SELECT guest_count,status FROM event_rsvps WHERE event_id=$1 AND contact_id=$2 FOR UPDATE`,[event.id,contact.id]);
+        const priorConfirmed = priorResult.rows[0] && ['confirmed','checked_in'].includes(priorResult.rows[0].status) ? priorResult.rows[0].guest_count : 0;
+        const projectedGuests = reservedResult.rows[0].reserved - priorConfirmed + guests;
+        const rsvpStatus = event.capacity && projectedGuests > event.capacity ? (event.waitlist_enabled ? 'waitlisted' : null) : 'confirmed';
         if (!rsvpStatus) throw Object.assign(new Error('That event is full.'), { status: 409 });
         eventRsvp = await client.query(`INSERT INTO event_rsvps (event_id,contact_id,guest_count,status,notes) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (event_id,contact_id) DO UPDATE SET guest_count=EXCLUDED.guest_count,status=EXCLUDED.status,notes=EXCLUDED.notes,updated_at=now() RETURNING *`, [event.id,contact.id,guests,rsvpStatus,clean(details.notes,1000)]);
         details.eventId = String(event.id);
@@ -228,10 +231,13 @@ export function registerRoutes(app, { pool, requireAdmin }) {
     try {
       const current=await pool.query('SELECT * FROM events WHERE id=$1',[integer(request.params.id)]);
       if(!current.rowCount) return response.status(404).json({error:'Event not found.'});
-      const e={...current.rows[0],...request.body};
-      if(!EVENT_STATUSES.has(e.status)) return response.status(400).json({error:'Invalid status.'});
-      const result=await pool.query(`UPDATE events SET title=$2,event_type=$3,description=$4,starts_at=$5,ends_at=$6,timezone=$7,venue=$8,address=$9,city=$10,state=$11,postal_code=$12,capacity=$13,waitlist_enabled=$14,status=$15,organizer=$16,contact_email=$17,accessibility_notes=$18,internal_notes=$19,updated_at=now() WHERE id=$1 RETURNING *`,[integer(request.params.id),clean(e.title,200),clean(e.event_type||e.eventType,80),clean(e.description,5000),e.starts_at||e.startsAt,e.ends_at||e.endsAt||null,clean(e.timezone,80),clean(e.venue,200)||null,clean(e.address,300)||null,clean(e.city,100)||null,clean(e.state,10),clean(e.postal_code||e.postalCode,20)||null,integer(e.capacity),e.waitlist_enabled??e.waitlistEnabled??true,e.status,clean(e.organizer,200)||null,email(e.contact_email||e.contactEmail),clean(e.accessibility_notes||e.accessibilityNotes,2000)||null,clean(e.internal_notes||e.internalNotes,5000)||null]);
-      await pool.query(`INSERT INTO audit_events (actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES ($1,'event.updated','event',$2,$3,$4)`,[request.adminSession.user_id,String(request.params.id),JSON.stringify({status:e.status}),request.ip]);
+      const old=current.rows[0];const body=request.body;
+      const status=body.status??old.status;
+      if(!EVENT_STATUSES.has(status)) return response.status(400).json({error:'Invalid status.'});
+      const endsAt=Object.hasOwn(body,'endsAt')?body.endsAt:(Object.hasOwn(body,'ends_at')?body.ends_at:old.ends_at);
+      const capacity=Object.hasOwn(body,'capacity')?integer(body.capacity):old.capacity;
+      const result=await pool.query(`UPDATE events SET title=$2,event_type=$3,description=$4,starts_at=$5,ends_at=$6,timezone=$7,venue=$8,address=$9,city=$10,state=$11,postal_code=$12,capacity=$13,waitlist_enabled=$14,status=$15,organizer=$16,contact_email=$17,accessibility_notes=$18,internal_notes=$19,updated_at=now() WHERE id=$1 RETURNING *`,[integer(request.params.id),clean(body.title??old.title,200),clean(body.eventType??body.event_type??old.event_type,80),clean(body.description??old.description,5000),body.startsAt??body.starts_at??old.starts_at,endsAt,clean(body.timezone??old.timezone,80),clean(body.venue??old.venue,200)||null,clean(body.address??old.address,300)||null,clean(body.city??old.city,100)||null,clean(body.state??old.state,10),clean(body.postalCode??body.postal_code??old.postal_code,20)||null,capacity,body.waitlistEnabled??body.waitlist_enabled??old.waitlist_enabled,status,clean(body.organizer??old.organizer,200)||null,email(body.contactEmail??body.contact_email??old.contact_email),clean(body.accessibilityNotes??body.accessibility_notes??old.accessibility_notes,2000)||null,clean(body.internalNotes??body.internal_notes??old.internal_notes,5000)||null]);
+      await pool.query(`INSERT INTO audit_events (actor_user_id,action,target_type,target_id,metadata,ip_address) VALUES ($1,'event.updated','event',$2,$3,$4)`,[request.adminSession.user_id,String(request.params.id),JSON.stringify({status}),request.ip]);
       response.json({event:result.rows[0]});
     } catch(error){next(error);}
   });
