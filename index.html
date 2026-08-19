@@ -698,7 +698,7 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
                 <div style="flex:1 1 380px;min-width:300px">
                   <div style="display:flex;align-items:baseline;gap:10px">
                     <h2 style="font-family:'Anton',sans-serif;font-size:clamp(22px,3cqw,32px);margin:0">UPCOMING</h2>
-                    <span style="font:600 9.5px/1 'Libre Franklin';letter-spacing:.14em;color:#7A1FB8;background:rgba(122,31,184,.1);padding:6px 9px;border-radius:20px">SAMPLE DATES</span>
+                    <span id="live-event-status" style="font:600 9.5px/1 'Libre Franklin';letter-spacing:.14em;color:#7A1FB8;background:rgba(122,31,184,.1);padding:6px 9px;border-radius:20px">LIVE CALENDAR</span>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
                     <sc-for list="{{ events }}" as="e" hint-placeholder-count="4">
@@ -825,7 +825,7 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
                     <button onClick="{{ goDonate }}" style="text-align:left;background:none;color:#FBB701;font:700 13.5px/1.3 'Libre Franklin';padding:0">Donate</button>
                     <button onClick="{{ goVolunteer }}" style="text-align:left;background:none;color:rgba(255,255,255,.85);font:500 13.5px/1.3 'Libre Franklin';padding:0">Volunteer</button>
                     <button onClick="{{ goFriends }}" style="text-align:left;background:none;color:rgba(255,255,255,.85);font:500 13.5px/1.3 'Libre Franklin';padding:0">Host an event</button>
-                    <span style="font:500 13.5px/1.3 'Libre Franklin';color:rgba(255,255,255,.5)">Yard sign request</span>
+                    <a href="/get-involved?type=yard_sign" style="font:500 13.5px/1.3 'Libre Franklin';color:rgba(255,255,255,.85);text-decoration:none">Yard sign request</a>
                   </div>
                 </div>
                 <div style="flex:1 1 200px">
@@ -1011,17 +1011,13 @@ class Component extends DCLogic {
         {name:'ORGANIZERS', detail:'Build a team in your ward.'},
         {name:'ELECTION DAY', detail:'Poll greeters, drivers, precinct captains.'}
       ],
-      events: [
-        {mon:'AUG', day:'23', name:'Coffee with Lisa — Bywater', where:'Sample location', time:'9:00 AM'},
-        {mon:'AUG', day:'29', name:'Insurance town hall', where:'Sample location, Algiers', time:'6:30 PM'},
-        {mon:'SEP', day:'05', name:'Door knock launch — Mid-City', where:'Meet at sample park', time:'10:00 AM'},
-        {mon:'SEP', day:'12', name:'Small business roundtable', where:'Sample venue, St. Bernard', time:'5:00 PM'}
-      ],
+      events: [],
       donateImpact: s.amount>=250 ? 'Funds a full day of door-to-door canvassing in one precinct.' : (s.amount>=100 ? 'Prints 250 door hangers for a New Orleans neighborhood.' : 'Covers the texting costs to reach 400 voters.')
     };
   }
 }
 
 </script>
+<script src="/public-crm.js"></script>
 </body>
 </html>

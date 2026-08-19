@@ -1,0 +1,53 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: lb26_test
+          POSTGRES_USER: lb26
+          POSTGRES_PASSWORD: test-database-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lb26 -d lb26_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://lb26:test-database-password@127.0.0.1:5432/lb26_test
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_PASSWORD: test-admin-password-12345
+      PORT: 8098
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Integration smoke test
+        run: |
+          node server.js > /tmp/lb26-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for i in 1 2 3 4 5 6 7 8 9 10; do curl -fsS http://127.0.0.1:8098/health && break; sleep 2; done
+          curl -fsS http://127.0.0.1:8098/health | grep '"database":"up"'
+          test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8098/api/admin/session)" = "401"
+          curl -fsS http://127.0.0.1:8098/get-involved | grep 'Get Involved'
+          curl -fsS http://127.0.0.1:8098/api/public/events | grep 'events'
+          curl -fsS -X POST http://127.0.0.1:8098/api/public/submissions -H 'Content-Type: application/json' --data '{"requestType":"volunteer","firstName":"Test","lastName":"Supporter","email":"test-supporter@example.com","consent":true,"details":{"notes":"CI smoke test"}}' | grep '"ok":true'
+          curl -fsS -c /tmp/lb26-cookies -X POST http://127.0.0.1:8098/admin/login -H 'Content-Type: application/x-www-form-urlencoded' --data 'email=admin%40example.com&password=test-admin-password-12345' -o /dev/null
+          csrf="$(curl -fsS -b /tmp/lb26-cookies http://127.0.0.1:8098/api/admin/session | jq -r .csrfToken)"
+          event_id="$(curl -fsS -b /tmp/lb26-cookies -X POST http://127.0.0.1:8098/api/admin/events -H 'Content-Type: application/json' -H "x-csrf-token: $csrf" --data '{"title":"CI Campaign Event","startsAt":"2030-08-20T18:00:00.000Z","status":"published","capacity":2}' | jq -r .event.id)"
+          test -n "$event_id"
+          curl -fsS -X POST http://127.0.0.1:8098/api/public/submissions -H 'Content-Type: application/json' --data "{\"requestType\":\"rsvp\",\"firstName\":\"Event\",\"lastName\":\"Guest\",\"email\":\"event-guest@example.com\",\"eventId\":$event_id,\"guestCount\":2}" | grep '"rsvpStatus":"confirmed"'
+          curl -fsS -b /tmp/lb26-cookies -X PATCH "http://127.0.0.1:8098/api/admin/events/$event_id" -H 'Content-Type: application/json' -H "x-csrf-token: $csrf" --data '{"title":"Updated CI Event","capacity":3}' | grep 'Updated CI Event'
+          curl -fsS -b /tmp/lb26-cookies http://127.0.0.1:8098/api/admin/dashboard | grep 'recent'
+      - run: docker build -t lb26:${{ github.sha }} .
