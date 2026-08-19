@@ -182,6 +182,22 @@ export function registerRoutes(app, { pool, requireAdmin }) {
     try { const result=await pool.query(`SELECT e.*,count(r.id)::int rsvp_count,COALESCE(sum(r.guest_count) FILTER (WHERE r.status IN ('confirmed','checked_in')),0)::int guest_count FROM events e LEFT JOIN event_rsvps r ON r.event_id=e.id GROUP BY e.id ORDER BY e.starts_at DESC`); response.json({events:result.rows}); } catch(error){ next(error); }
   });
 
+  app.get('/api/admin/events/:id/rsvps', requireAdmin, async (request,response,next)=>{
+    try {
+      const result=await pool.query(`SELECT r.id,r.guest_count,r.status,r.notes,r.created_at,c.id contact_id,c.first_name,c.last_name,c.email,c.phone FROM event_rsvps r JOIN contacts c ON c.id=r.contact_id WHERE r.event_id=$1 ORDER BY r.created_at`,[integer(request.params.id)]);
+      response.json({rsvps:result.rows});
+    } catch(error){next(error);}
+  });
+
+  app.get('/api/admin/events/:id/rsvps.csv', requireAdmin, async (request,response,next)=>{
+    try {
+      const result=await pool.query(`SELECT r.status,r.guest_count,r.created_at,c.first_name,c.last_name,c.email,c.phone FROM event_rsvps r JOIN contacts c ON c.id=r.contact_id WHERE r.event_id=$1 ORDER BY r.created_at`,[integer(request.params.id)]);
+      const headers=['status','guest_count','created_at','first_name','last_name','email','phone'];
+      const csv=[headers.map(csvCell).join(','),...result.rows.map(row=>headers.map(key=>csvCell(row[key])).join(','))].join('\r\n');
+      response.set({'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="event-${integer(request.params.id)}-rsvps.csv"`}).send(csv);
+    } catch(error){next(error);}
+  });
+
   app.post('/api/admin/events', requireAdmin, requireCsrf, async (request, response, next) => {
     try {
       const b=request.body;
