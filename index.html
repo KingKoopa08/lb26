@@ -26,6 +26,11 @@ body>x-dc>div>main{padding:0!important;gap:0!important;background:#fff!important
 body>x-dc>div>main>div:first-child{display:none!important}
 body>x-dc>div>main>div:nth-child(2){width:100%!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}
 body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
+[data-dc-tpl="6"]{display:none!important}
+[data-dc-tpl="25"]{width:100%!important;min-width:0!important;padding:0!important;gap:0!important;background:#fff!important}
+[data-dc-tpl="26"]{display:none!important}
+[data-dc-tpl="29"]{width:100%!important;max-width:none!important;border-radius:0!important;box-shadow:none!important}
+[data-dc-tpl="29"]>div:first-child{display:none!important}
 @media(max-width:719px){
   html,body,x-dc{width:100%;max-width:100%;overflow-x:hidden}
   body x-dc *{min-width:0!important;box-sizing:border-box}
@@ -890,7 +895,7 @@ const SCREENS = [
   {id:'social',  label:'Social kit',   title:'Social + share graphics', note:'Mic-drop lines as shareables', url:'internal / social-kit'}
 ];
 class Component extends DCLogic {
-  state = {screen:(this.props.startScreen||'home'), device:(typeof window!=='undefined'&&window.innerWidth<720?'mobile':'desktop'), filter:'All', planId:1, amount:50, recurring:false, menuOpen:false};
+  state = {screen:'home', device:(typeof window!=='undefined'&&window.innerWidth<720?'mobile':'desktop'), filter:'All', planId:1, amount:50, recurring:false, menuOpen:false};
   go(id){ this.setState({screen:id, menuOpen:false}); if(typeof window!=='undefined') window.scrollTo({top:0}); }
   navBtn(active){
     return 'display:flex;align-items:center;gap:9px;text-align:left;padding:9px 11px;border-radius:8px;font:'+(active?'700':'500')+' 13px/1.2 \'Libre Franklin\';'
