@@ -10,11 +10,19 @@ import { registerEmailRoutes } from './email-routes.js';
 const root = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = Number(process.env.PORT || 8098);
+const canonicalHost = String(process.env.CANONICAL_HOST || 'ballayforcongress.com').toLowerCase();
 const sessionHours = Math.max(1, Number(process.env.SESSION_TTL_HOURS || 12));
 const loginAttempts = new Map();
 
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
+app.use((request, response, next) => {
+  const host = String(request.hostname || '').toLowerCase();
+  if (host === `www.${canonicalHost}` || host === 'lisaballayforcongress.com' || host === 'www.lisaballayforcongress.com') {
+    return response.redirect(301, `https://${canonicalHost}${request.originalUrl}`);
+  }
+  next();
+});
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.json({ limit: '12mb', verify: (request, _response, buffer) => { request.rawBody = Buffer.from(buffer); } }));
@@ -74,6 +82,11 @@ app.get('/admin/login', async (request, response, next) => {
   } catch (error) { next(error); }
 });
 
+app.use(['/admin', '/api'], (_request, response, next) => {
+  response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  next();
+});
+
 app.post('/admin/login', async (request, response, next) => {
   try {
     if (!loginAllowed(request.ip)) return response.status(429).send('Too many login attempts. Try again later.');
@@ -121,6 +134,12 @@ app.get('/support.js', (_request, response) => response.sendFile(path.join(root,
 app.get('/public-crm.js', (_request, response) => response.sendFile(path.join(root, 'public-crm.js')));
 app.get('/involvement.js', (_request, response) => response.sendFile(path.join(root, 'involvement.js')));
 app.get('/involvement.css', (_request, response) => response.sendFile(path.join(root, 'involvement.css')));
+app.get('/robots.txt', (_request, response) => {
+  response.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: https://${canonicalHost}/sitemap.xml\n`);
+});
+app.get('/sitemap.xml', (_request, response) => {
+  response.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://${canonicalHost}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>https://${canonicalHost}/get-involved</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n</urlset>\n`);
+});
 app.get('/get-involved', (_request, response) => response.sendFile(path.join(root, 'get-involved.html')));
 app.get('/', (_request, response) => response.sendFile(path.join(root, 'index.html')));
 app.use((_request, response) => response.status(404).send('Not found'));

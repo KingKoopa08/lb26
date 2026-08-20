@@ -41,6 +41,9 @@ jobs:
           curl -fsS http://127.0.0.1:8098/health | grep '"database":"up"'
           test "$(curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8098/api/admin/session)" = "401"
           curl -fsS http://127.0.0.1:8098/get-involved | grep 'Get Involved'
+          curl -fsS http://127.0.0.1:8098/robots.txt | grep 'Sitemap: https://ballayforcongress.com/sitemap.xml'
+          curl -fsS http://127.0.0.1:8098/sitemap.xml | grep 'https://ballayforcongress.com/get-involved'
+          test "$(curl -sS -o /dev/null -w '%{http_code}:%{redirect_url}' -H 'Host: lisaballayforcongress.com' http://127.0.0.1:8098/get-involved)" = "301:https://ballayforcongress.com/get-involved"
           curl -fsS http://127.0.0.1:8098/api/public/events | grep 'events'
           curl -fsS -X POST http://127.0.0.1:8098/api/public/submissions -H 'Content-Type: application/json' --data '{"requestType":"volunteer","firstName":"Test","lastName":"Supporter","email":"test-supporter@example.com","consent":true,"details":{"notes":"CI smoke test"}}' | grep '"ok":true'
           curl -fsS -c /tmp/lb26-cookies -X POST http://127.0.0.1:8098/admin/login -H 'Content-Type: application/x-www-form-urlencoded' --data 'email=admin%40example.com&password=test-admin-password-12345' -o /dev/null
