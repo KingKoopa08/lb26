@@ -45,6 +45,7 @@ jobs:
             printf 'SYNC_ADMIN_CREDENTIALS=true\n'
             printf 'COOKIE_SECURE=false\n'
             printf 'SESSION_TTL_HOURS=12\n'
+            printf 'COMING_SOON=true\n'
             printf 'RESEND_API_KEY=%s\n' "$RESEND_API_KEY"
             printf 'RESEND_FROM_EMAIL=%s\n' "$RESEND_FROM_EMAIL"
             printf 'RESEND_REPLY_TO=%s\n' "$RESEND_REPLY_TO"

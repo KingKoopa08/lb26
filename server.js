@@ -13,6 +13,7 @@ const app = express();
 const port = Number(process.env.PORT || 8098);
 const canonicalHost = String(process.env.CANONICAL_HOST || 'ballayforcongress.com').toLowerCase();
 const sessionHours = Math.max(1, Number(process.env.SESSION_TTL_HOURS || 12));
+const comingSoonEnabled = process.env.COMING_SOON === 'true';
 const loginAttempts = new Map();
 
 app.set('trust proxy', 1);
@@ -86,6 +87,21 @@ app.get('/admin/login', async (request, response, next) => {
 app.use(['/admin', '/api'], (_request, response, next) => {
   response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
   next();
+});
+
+app.get('/preview', requireAdmin, (_request, response) => response.redirect(303, '/'));
+
+app.use(async (request, response, next) => {
+  if (!comingSoonEnabled) return next();
+  if (request.path === '/health' || request.path.startsWith('/admin') || request.path.startsWith('/api/admin') || request.path.startsWith('/api/webhooks')) return next();
+  try {
+    if (await readSession(request)) return next();
+    if (request.method === 'GET' && request.path === '/') {
+      response.setHeader('Cache-Control', 'no-store');
+      return response.sendFile(path.join(root, 'coming-soon.html'));
+    }
+    return response.status(404).send('Not found');
+  } catch (error) { return next(error); }
 });
 
 app.post('/admin/login', async (request, response, next) => {
