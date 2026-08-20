@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { bootstrapAdmin, digestToken, migrate, pool, verifyPassword } from './db.js';
 import { registerRoutes } from './routes.js';
 import { registerEmailRoutes } from './email-routes.js';
+import { ISSUE_PAGES, PLANS, SEO_PATHS, renderActionPage, renderDistrict, renderIssue, renderLisa, renderPlan, renderPlansIndex, renderIssuesIndex } from './seo-pages.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -134,11 +135,30 @@ app.get('/support.js', (_request, response) => response.sendFile(path.join(root,
 app.get('/public-crm.js', (_request, response) => response.sendFile(path.join(root, 'public-crm.js')));
 app.get('/involvement.js', (_request, response) => response.sendFile(path.join(root, 'involvement.js')));
 app.get('/involvement.css', (_request, response) => response.sendFile(path.join(root, 'involvement.css')));
+app.get('/meet-lisa', (_request, response) => response.redirect(301, '/lisa-ballay'));
+app.get('/lisa-ballay', (_request, response) => response.send(renderLisa()));
+app.get('/louisiana-district-2', (_request, response) => response.send(renderDistrict()));
+app.get('/issues', (_request, response) => response.send(renderIssuesIndex()));
+app.get('/issues/:slug', (request, response, next) => {
+  const issue = ISSUE_PAGES.find((item) => item.slug === request.params.slug);
+  if (!issue) return next();
+  response.send(renderIssue(issue));
+});
+app.get('/freedom-plans', (_request, response) => response.send(renderPlansIndex()));
+app.get('/freedom-plans/:slug', (request, response, next) => {
+  const plan = PLANS.find((item) => item.slug === request.params.slug);
+  if (!plan) return next();
+  response.send(renderPlan(plan));
+});
+app.get('/volunteer', (_request, response) => response.send(renderActionPage('volunteer')));
+app.get('/yard-signs', (_request, response) => response.send(renderActionPage('yard-signs')));
+app.get('/friends-of-lisa', (_request, response) => response.send(renderActionPage('friends-of-lisa')));
 app.get('/robots.txt', (_request, response) => {
   response.type('text/plain').send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\n\nSitemap: https://${canonicalHost}/sitemap.xml\n`);
 });
 app.get('/sitemap.xml', (_request, response) => {
-  response.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>https://${canonicalHost}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>\n  <url><loc>https://${canonicalHost}/get-involved</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n</urlset>\n`);
+  const urls = ['/', ...SEO_PATHS].map((route) => `  <url><loc>https://${canonicalHost}${route}</loc></url>`).join('\n');
+  response.type('application/xml').send(`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`);
 });
 app.get('/get-involved', (_request, response) => response.sendFile(path.join(root, 'get-involved.html')));
 app.get('/', (_request, response) => response.sendFile(path.join(root, 'index.html')));
