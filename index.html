@@ -100,7 +100,6 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
                 <ul style="margin:12px 0 0;padding-left:18px;font:400 14px/1.7 'Libre Franklin';color:rgba(30,7,51,.78)">
                   <li>Donate is the primary action on every screen; Join is the secondary.</li>
                   <li>Crossover voters matter more than party loyalists, so the case is made on cost of living, not ideology.</li>
-                  <li>The Carter page argues on record and receipts, and keeps the credit the docs give him.</li>
                   <li>Contact details, event dates and social handles are placeholders.</li>
                 </ul>
               </div>
@@ -130,7 +129,7 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
             </div>
             <div style="margin-top:26px;padding:20px 24px;border-left:4px solid #FBB701;background:#F2ECE1;border-radius:0 12px 12px 0">
               <div style="font:600 12px/1.5 'Libre Franklin';letter-spacing:.02em;color:#7A1FB8">OPEN QUESTIONS FOR YOU</div>
-              <div style="font:400 14px/1.7 'Libre Franklin';color:rgba(30,7,51,.78);margin-top:6px">Photography is the biggest gap: the site wants Lisa in scrubs, Lisa at a door, Lisa in a neighborhood. Also need the real committee address for the disclaimer, the donation processor, and whether the Carter page ships at launch or after.</div>
+              <div style="font:400 14px/1.7 'Libre Franklin';color:rgba(30,7,51,.78);margin-top:6px">Photography is the biggest gap: the site wants Lisa in scrubs, Lisa at a door, Lisa in a neighborhood. We also need the real committee address for the disclaimer and the donation processor.</div>
             </div>
           </div>
         </sc-if>
@@ -452,69 +451,6 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
                   <button onClick="{{ goDonate }}" style="background:#FBB701;color:#1E0733;font:800 13px/1 'Libre Franklin';letter-spacing:.1em;padding:16px 24px;border-radius:7px;box-shadow:0 4px 0 #C98E00">DONATE</button>
                   <button onClick="{{ goVolunteer }}" style="background:none;border:2px solid #1E0733;color:#1E0733;font:800 12.5px/1 'Libre Franklin';letter-spacing:.08em;padding:15px 22px;border-radius:7px" style-hover="background:#1E0733;color:#fff">VOLUNTEER</button>
                 </div>
-              </div>
-            </section>
-          </div>
-        </sc-if>
-
-        <sc-if value="{{ isCarter }}" hint-placeholder-val="{{ false }}">
-          <div>
-            <section style="background:#1E0733;color:#fff;padding:clamp(30px,4.5cqw,64px) clamp(22px,4cqw,56px)">
-              <div style="max-width:1080px;margin:0 auto">
-                <div style="font:700 10.5px/1 'Libre Franklin';letter-spacing:.18em;color:#FBB701">THE RECORD</div>
-                <h1 style="font-family:'Montserrat',sans-serif;font-size:clamp(34px,6.4cqw,74px);line-height:.94;margin:14px 0 0;max-width:24ch">WASHINGTON GOT MORE EXPENSIVE. SO DID YOUR LIFE.</h1>
-                <p style="font:400 clamp(15px,1.7cqw,18px)/1.7 'Libre Franklin';color:rgba(255,255,255,.78);margin:20px 0 0;max-width:56ch">Troy Carter has represented Louisiana's 2nd Congressional District in Washington since May 2021. So there is one question every voter should ask:</p>
-                <p style="font-family:'Montserrat',sans-serif;font-size:clamp(22px,3.4cqw,38px);line-height:1.1;margin:18px 0 0;max-width:30ch;color:#FBB701">WHAT HAS GOTTEN MORE AFFORDABLE SINCE TROY CARTER WENT TO WASHINGTON?</p>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:22px">
-                  <sc-for list="{{ carterQs }}" as="q" hint-placeholder-count="9"><span style="border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:9px 14px;font:500 13.5px/1 'Libre Franklin';color:rgba(255,255,255,.85)">{{ q }}</span></sc-for>
-                </div>
-                <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:14px;margin-top:26px;padding-top:22px;border-top:1px solid rgba(255,255,255,.16)">
-                  <span style="font:600 13px/1.5 'Libre Franklin';color:rgba(255,255,255,.7)">The answer for too many Louisiana families is simple:</span>
-                  <span style="font-family:'Montserrat',sans-serif;font-size:clamp(28px,4.4cqw,50px);line-height:1;color:#fff">NOT MUCH.</span>
-                </div>
-              </div>
-            </section>
-            <section style="padding:clamp(30px,4.5cqw,60px) clamp(22px,4cqw,56px);max-width:1080px;margin:0 auto">
-              <div style="background:#F2ECE1;border-left:4px solid #7A1FB8;border-radius:0 14px 14px 0;padding:22px 26px">
-                <p style="font:400 15px/1.7 'Libre Franklin';color:rgba(30,7,51,.85);margin:0;text-wrap:pretty">Troy Carter did not personally cause every one of those increases. But after five years in Washington, he cannot credibly run as though Washington's results have nothing to do with Washington. If the system is working, why does living here cost so much?</p>
-              </div>
-              <div style="display:flex;flex-direction:column;gap:16px;margin-top:30px">
-                <sc-for list="{{ contrasts }}" as="c" hint-placeholder-count="6">
-                  <div style="background:#fff;border:1px solid rgba(30,7,51,.1);border-radius:16px;overflow:hidden">
-                    <div style="display:flex;align-items:baseline;gap:12px;padding:18px 24px;border-bottom:1px solid rgba(30,7,51,.08)">
-                      <span style="font-family:'Montserrat',sans-serif;font-size:20px;color:rgba(30,7,51,.22);line-height:1">{{ c.n }}</span>
-                      <span style="font-family:'Montserrat',sans-serif;font-size:clamp(17px,2.2cqw,24px);letter-spacing:.03em;line-height:1.05">{{ c.topic }}</span>
-                    </div>
-                    <div style="display:flex;flex-wrap:wrap">
-                      <div style="flex:1 1 260px;min-width:240px;padding:20px 24px;background:#F7F2E9">
-                        <div style="font:800 10px/1 'Libre Franklin';letter-spacing:.14em;color:rgba(30,7,51,.5)">TROY CARTER</div>
-                        <p style="font:400 14px/1.65 'Libre Franklin';color:rgba(30,7,51,.8);margin:10px 0 0">{{ c.carter }}</p>
-                      </div>
-                      <div style="flex:1 1 260px;min-width:240px;padding:20px 24px;border-left:3px solid #FBB701">
-                        <div style="font:800 10px/1 'Libre Franklin';letter-spacing:.14em;color:#7A1FB8">LISA BALLAY</div>
-                        <p style="font:400 14px/1.65 'Libre Franklin';color:rgba(30,7,51,.85);margin:10px 0 0">{{ c.lisa }}</p>
-                      </div>
-                    </div>
-                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;padding:16px 24px;background:#1E0733;color:#fff">
-                      <span style="font:800 9.5px/1 'Libre Franklin';letter-spacing:.16em;color:#FBB701;flex:none">THE CONTRAST</span>
-                      <span style="font:600 14.5px/1.5 'Libre Franklin'">{{ c.contrast }}</span>
-                    </div>
-                  </div>
-                </sc-for>
-              </div>
-              <div style="margin-top:26px;display:flex;flex-wrap:wrap;gap:14px">
-                <div style="flex:1 1 300px;background:#fff;border:1px solid rgba(30,7,51,.12);border-radius:14px;padding:20px 22px">
-                  <div style="font:800 10px/1 'Libre Franklin';letter-spacing:.14em;color:#02961B">WHERE CREDIT IS DUE</div>
-                  <p style="font:400 13.5px/1.65 'Libre Franklin';color:rgba(30,7,51,.78);margin:10px 0 0">In July 2026, Carter supported Rep. Thomas Massie's amendment that would have removed $3.3 billion in Israeli security assistance. In 2025 and 2026 he introduced NFIP legislation on rate protection and premium transparency. This campaign argues results, not caricature.</p>
-                </div>
-                <div style="flex:1 1 300px;background:#fff;border:1px solid rgba(30,7,51,.12);border-radius:14px;padding:20px 22px">
-                  <div style="font:800 10px/1 'Libre Franklin';letter-spacing:.14em;color:rgba(30,7,51,.5)">SOURCES</div>
-                  <p style="font:400 13.5px/1.65 'Libre Franklin';color:rgba(30,7,51,.7);margin:10px 0 0">CPI-U, Louisiana Department of Insurance annual rate filings, independent homeowners premium data, House roll-call records, and Carter's own congressional voting page. Full citations to be linked per claim before launch.</p>
-                </div>
-              </div>
-              <div style="margin-top:26px;background:#FBB701;border-radius:16px;padding:24px 26px;display:flex;flex-wrap:wrap;gap:18px;align-items:center">
-                <div style="flex:1 1 300px;font-family:'Montserrat',sans-serif;font-size:clamp(20px,2.8cqw,32px);line-height:1.08">WHAT IF GOVERNMENT'S JOB WASN'T TO GIVE YOU MORE PROGRAMS, BUT TO LEAVE YOU WITH MORE OF YOUR OWN MONEY?</div>
-                <button onClick="{{ goPlans }}" style="background:#1E0733;color:#fff;font:800 13px/1 'Libre Franklin';letter-spacing:.1em;padding:17px 24px;border-radius:7px">SEE THE 32 PLANS</button>
               </div>
             </section>
           </div>
@@ -846,7 +782,7 @@ body>x-dc>div>main>div:nth-child(2)>div:first-child{display:none!important}
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;notes&quot;,&quot;home&quot;,&quot;plans&quot;,&quot;plan&quot;,&quot;lisa&quot;,&quot;carter&quot;,&quot;friends&quot;,&quot;donate&quot;,&quot;volunteer&quot;,&quot;social&quot;],&quot;default&quot;:&quot;notes&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mockup&quot;},&quot;startDevice&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mockup&quot;},&quot;showTicker&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Homepage&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;notes&quot;,&quot;home&quot;,&quot;plans&quot;,&quot;plan&quot;,&quot;lisa&quot;,&quot;friends&quot;,&quot;donate&quot;,&quot;volunteer&quot;,&quot;social&quot;],&quot;default&quot;:&quot;notes&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mockup&quot;},&quot;startDevice&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;],&quot;default&quot;:&quot;desktop&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mockup&quot;},&quot;showTicker&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Homepage&quot;}}">
 const P = (n,title,hook,promise,tag,body)=>({n,title,hook,promise,tag,body,label:'PLAN '+n});
 const PLANS = [
 P(1,'THE $500-A-MONTH FREEDOM PLAN','Put $500 a month back into the family budget.','$500 more freedom every month.','Money & Taxes','Make life at least $500 a month more affordable for Louisiana families. Not with another government check — by attacking the costs government helps create: taxes, energy bills, insurance costs, healthcare costs, housing costs, fees, and the hidden cost of regulation. Every major economic proposal gets measured by one question: does this leave Louisiana families with more money at the end of the month?'),
@@ -888,7 +824,6 @@ const SCREENS = [
   {id:'plans',   label:'Freedom Plans',title:'Freedom Plans index', note:'All 32, filterable by what it fixes', url:'ballayforcongress.com/freedom-plans'},
   {id:'plan',    label:'Plan detail',  title:'Plan detail',         note:'One plan, one promise, one ask', url:'ballayforcongress.com/freedom-plans/'},
   {id:'lisa',    label:'Meet Lisa',    title:'Meet Lisa',           note:'Nurse, not a career politician', url:'ballayforcongress.com/meet-lisa'},
-  {id:'carter',  label:'The Record',   title:'The Case Against Carter', note:'Contrast page, argued on receipts', url:'ballayforcongress.com/the-record'},
   {id:'friends', label:'Friends of Lisa', title:'Friends of Lisa',  note:'Referral engine, not a mailing list', url:'ballayforcongress.com/friends'},
   {id:'donate',  label:'Donate',       title:'Donate',              note:'Primary conversion screen', url:'secure.ballayforcongress.com/donate'},
   {id:'volunteer',label:'Volunteer',   title:'Volunteer + events',  note:'Roles, calendar, house parties', url:'ballayforcongress.com/volunteer'},
@@ -922,7 +857,7 @@ class Component extends DCLogic {
     const days = Math.max(0, Math.round((new Date('2026-11-03T00:00:00') - new Date())/864e5));
     return {
       nav: SCREENS.map((x,i)=>({label:x.label, num:String(i+1).padStart(2,'0'), onClick:()=>this.go(x.id), style:this.navBtn(s.screen===x.id)})),
-      siteNav: [['plans','Freedom Plans'],['lisa','Meet Lisa'],['carter','The Record'],['friends','Friends of Lisa'],['volunteer','Volunteer']]
+      siteNav: [['plans','Freedom Plans'],['lisa','Meet Lisa'],['friends','Friends of Lisa'],['volunteer','Volunteer']]
         .map(([id,label])=>({label, onClick:()=>this.go(id),
           style:'background:none;font:'+(s.screen===id?'800':'600')+' 13px/1 \'Libre Franklin\';color:'+(s.screen===id?'#7A1FB8':'#1E0733')+';padding:8px 2px;white-space:nowrap'})),
       screenTitle: cur.title, screenNote: cur.note,
@@ -933,11 +868,11 @@ class Component extends DCLogic {
       setDesktop: ()=>this.setState({device:'desktop', menuOpen:false}), setMobile: ()=>this.setState({device:'mobile'}),
       desktopStyle: this.pill(s.device!=='mobile'), mobileStyle: this.pill(s.device==='mobile'),
       isNotes: s.screen==='notes', isHome: s.screen==='home', isPlans: s.screen==='plans', isPlan: s.screen==='plan',
-      isLisa: s.screen==='lisa', isCarter: s.screen==='carter', isFriends: s.screen==='friends',
+      isLisa: s.screen==='lisa', isFriends: s.screen==='friends',
       isDonate: s.screen==='donate', isVolunteer: s.screen==='volunteer', isSocial: s.screen==='social',
       showSite: s.screen!=='notes' && s.screen!=='social',
       showFooter: s.screen!=='notes' && s.screen!=='social',
-      goHome:()=>this.go('home'), goPlans:()=>this.go('plans'), goLisa:()=>this.go('lisa'), goCarter:()=>this.go('carter'),
+      goHome:()=>this.go('home'), goPlans:()=>this.go('plans'), goLisa:()=>this.go('lisa'),
       goFriends:()=>this.go('friends'), goDonate:()=>this.go('donate'), goVolunteer:()=>this.go('volunteer'),
       daysLeft: days,
       showTicker: this.props.showTicker !== false,
@@ -945,7 +880,7 @@ class Component extends DCLogic {
       homeStats: [
         {big:'58%', text:'Average Louisiana homeowners insurance rose from about $3,797 in 2023 to $5,986 in 2025.'},
         {big:'$40T', text:'The national debt is approaching $40 trillion. Every dollar borrowed eventually shows up in your bill.'},
-        {big:'5 yrs', text:'Troy Carter has represented this district since May 2021. What has gotten more affordable since?'}
+        {big:'$500', text:"The monthly affordability target behind Lisa's flagship Freedom Plan."}
       ],
       seenCosts: ['Taxes','Fees','Permits'],
       hiddenCosts: ['Your insurance premium','Your electric bill','Your rent','Your groceries','Your hospital bill','Your mortgage','Your gallon of gas'],
@@ -970,17 +905,6 @@ class Component extends DCLogic {
         {kicker:'THE FRONTLINES', title:'SHE SAW BAD GOVERNMENT UP CLOSE.', body:'During COVID, Lisa worked the frontlines in New Orleans while politicians held press conferences and bureaucracies issued orders. She dealt with the consequences in the real world.'},
         {kicker:'THE NURSE\u2019S VIEW', title:'COVERAGE IS NOT THE SAME AS AFFORDABILITY.', body:'A career in healthcare taught her the difference between a program with a good name and a bill a family can actually pay. She starts every policy question with the price.'},
         {kicker:'THE REASON', title:'A LOUISIANA MOM WHO\u2019S HAD ENOUGH OF THE BILL.', body:'Not a career politician. Lisa doesn\u2019t want Washington running more of your life. She wants you running more of it.'}
-      ],
-      carterQs: ['Your groceries?','Your rent?','Your first home?','Your homeowners insurance?','Your flood insurance?','Your car insurance?','Your healthcare?','Your electric bill?','Your taxes?'],
-      contrasts: [
-        {n:'01', topic:'AFFORDABILITY', carter:'Washington measures success by how much money it spends and how many programs it creates. His campaign promises expanded federal involvement in healthcare, housing, student debt, wages and the economy.', lisa:'Measure success by what Louisiana families can afford: cheaper groceries, cheaper energy, cheaper healthcare, cheaper insurance, attainable housing and bigger take-home pay.', contrast:'Carter asks what Washington can fund. Lisa asks what Louisiana families can afford.'},
-        {n:'02', topic:'FEDERAL SPENDING AND DEBT', carter:'Repeatedly supported large appropriations legislation, including the Further Consolidated Appropriations Act in March 2024, and advertises federal spending brought into Louisiana.', lisa:'Stop judging members of Congress by how much federal money they bring home. Judge them by how much money they stop Washington from taking, borrowing and wasting.', contrast:"Carter brings Louisiana a piece of Washington's spending. Lisa wants Louisiana to keep more of its money before Washington gets it."},
-        {n:'03', topic:'PAYCHECKS AND TAXES', carter:'An economic philosophy built largely on government programs, subsidies, grants and spending.', lisa:'Start with the worker: the $500-a-Month Freedom Plan, $0 tax on tips, $0 tax on overtime, no tax on necessities, and the Paycheck Protection Plan.', contrast:"Washington doesn't need another dollar as badly as your family does."},
-        {n:'04', topic:'SURVEILLANCE AND THE FOURTH AMENDMENT', carter:'Voted yes on final passage of H.R. 7888 in April 2024, reauthorizing Section 702 surveillance authority, and voted yes again in April 2026 to extend Title VII FISA authorities.', lisa:'Warrant means warrant. No purchasing your data to evade the Fourth Amendment. No mass surveillance loopholes. No treating every American like a potential suspect.', contrast:"Carter voted to continue powerful federal surveillance authorities. Lisa's rule is simple: get a warrant."},
-        {n:'05', topic:'WAR AND FOREIGN POLICY', carter:"In July 2026 he supported Rep. Massie's amendment removing $3.3 billion in Israeli security assistance, a meaningful break with establishment foreign policy.", lisa:'Make nonintervention the rule rather than something Congress discovers after wars have dragged on. No blank checks. No undeclared wars. No treating congressional authorization as optional.', contrast:'Lisa doesn\u2019t want Washington reconsidering endless war after the damage is done. She wants Congress to stop it before it starts.'},
-        {n:'06', topic:'HOUSING', carter:'Promises to fight for affordable housing through federal legislation and programs, including "equal and fair housing legislation."', lisa:'Attack the cost of creating housing: the Affordable Home Plan, the First Home Freedom Plan and the 30-Day Permit Plan. Easier to build, easier to buy, easier to keep.', contrast:'Carter subsidizes expensive housing. Lisa wants to attack why housing became expensive.'},
-        {n:'07', topic:'INSURANCE', carter:'Introduced NFIP legislation in 2025 on rate protection after a program lapse and in 2026 on FEMA premium transparency.', lisa:'Attack barriers to competition, expand consumer choice, make mitigation economically worthwhile, and judge every proposal by one number: will the premium actually go down?', contrast:'Carter wants government to better explain your insurance bill. Lisa wants to make the bill smaller.'},
-        {n:'08', topic:'HEALTHCARE', carter:'Introduced 2026 legislation to help eligible people remain enrolled in Medicaid and opposed reductions in ACA subsidies.', lisa:'As a nurse, Lisa has seen healthcare from the patient\u2019s side. Price transparency, competition, patient choice, cheaper prescriptions, fewer barriers to care.', contrast:'Carter asks how government pays the healthcare bill. Lisa asks why the bill is so expensive in the first place.'}
       ],
       pipeline: ['Lead','Introduction','Contacted','Meeting','Committed','Activated','Referrals']
         .map((label,i,a)=>({label, arrow: i<a.length-1 ? '\u2192' : ''})),
