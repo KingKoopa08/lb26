@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { bootstrapAdmin, digestToken, migrate, pool, verifyPassword } from './db.js';
 import { registerRoutes } from './routes.js';
 import { registerEmailRoutes } from './email-routes.js';
+import { registerAnalyticsRoutes } from './analytics-routes.js';
 import { ISSUE_PAGES, PLANS, SEO_PATHS, renderActionPage, renderDistrict, renderIssue, renderLisa, renderPlan, renderPlansIndex, renderIssuesIndex } from './seo-pages.js';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -93,7 +94,7 @@ app.get('/preview', requireAdmin, (_request, response) => response.redirect(303,
 
 app.use(async (request, response, next) => {
   if (!comingSoonEnabled) return next();
-  if (request.path === '/health' || request.path.startsWith('/admin') || request.path.startsWith('/api/admin') || request.path.startsWith('/api/webhooks')) return next();
+  if (request.path === '/health' || request.path === '/analytics.js' || request.path === '/api/public/analytics' || request.path.startsWith('/admin') || request.path.startsWith('/api/admin') || request.path.startsWith('/api/webhooks')) return next();
   try {
     if (await readSession(request)) return next();
     if (request.method === 'GET' && request.path === '/') {
@@ -131,6 +132,7 @@ app.get('/api/admin/session', requireAdmin, (request, response) => response.json
 
 registerRoutes(app, { pool, requireAdmin });
 registerEmailRoutes(app, { pool, requireAdmin });
+registerAnalyticsRoutes(app, { pool, requireAdmin, readSession });
 
 app.post('/admin/logout', requireAdmin, async (request, response, next) => {
   try {
@@ -144,6 +146,7 @@ app.post('/admin/logout', requireAdmin, async (request, response, next) => {
 
 app.get('/admin/admin.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.css')));
 app.get('/admin/email.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'email.css')));
+app.get('/admin/analytics.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'analytics.css')));
 app.get('/admin/admin.js', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.js')));
 app.get('/admin', requireAdmin, (_request, response) => response.sendFile(path.join(root, 'admin', 'index.html')));
 app.use('/assets', express.static(path.join(root, 'assets'), { maxAge: '1d' }));
@@ -151,6 +154,7 @@ app.get('/support.js', (_request, response) => response.sendFile(path.join(root,
 app.get('/public-crm.js', (_request, response) => response.sendFile(path.join(root, 'public-crm.js')));
 app.get('/involvement.js', (_request, response) => response.sendFile(path.join(root, 'involvement.js')));
 app.get('/involvement.css', (_request, response) => response.sendFile(path.join(root, 'involvement.css')));
+app.get('/analytics.js', (_request, response) => response.sendFile(path.join(root, 'analytics.js')));
 app.get('/meet-lisa', (_request, response) => response.redirect(301, '/lisa-ballay'));
 app.get('/lisa-ballay', (_request, response) => response.send(renderLisa()));
 app.get('/louisiana-district-2', (_request, response) => response.send(renderDistrict()));
