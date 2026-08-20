@@ -12,6 +12,7 @@ services:
       SYNC_ADMIN_CREDENTIALS: ${SYNC_ADMIN_CREDENTIALS:-false}
       COOKIE_SECURE: ${COOKIE_SECURE:-true}
       SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      COMING_SOON: ${COMING_SOON:-false}
     ports:
       - "8098:8098"
     depends_on:
