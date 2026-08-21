@@ -22,7 +22,7 @@ jobs:
     env:
       DATABASE_URL: postgres://lb26:test-database-password@127.0.0.1:5432/lb26_test
       ADMIN_EMAIL: admin@example.com
-      ADMIN_PASSWORD: test-admin-password-12345
+      ADMIN_PASSWORD: Test-admin-password-12345!
       PORT: 8098
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +53,7 @@ jobs:
           curl -fsS http://127.0.0.1:8098/api/public/events | grep 'events'
           test "$(curl -sS -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8098/api/public/analytics -H 'Content-Type: application/json' --data '{"eventType":"page_view","visitorId":"ci-visitor","sessionId":"ci-session","path":"/","title":"CI test","utmSource":"ci"}')" = "204"
           curl -fsS -X POST http://127.0.0.1:8098/api/public/submissions -H 'Content-Type: application/json' --data '{"requestType":"volunteer","firstName":"Test","lastName":"Supporter","email":"test-supporter@example.com","consent":true,"details":{"notes":"CI smoke test"}}' | grep '"ok":true'
-          curl -fsS -c /tmp/lb26-cookies -X POST http://127.0.0.1:8098/admin/login -H 'Content-Type: application/x-www-form-urlencoded' --data 'email=admin%40example.com&password=test-admin-password-12345' -o /dev/null
+          curl -fsS -c /tmp/lb26-cookies -X POST http://127.0.0.1:8098/admin/login -H 'Content-Type: application/x-www-form-urlencoded' --data 'email=admin%40example.com&password=Test-admin-password-12345!' -o /dev/null
           csrf="$(curl -fsS -b /tmp/lb26-cookies http://127.0.0.1:8098/api/admin/session | jq -r .csrfToken)"
           if ! curl -fsS -b /tmp/lb26-cookies 'http://127.0.0.1:8098/api/admin/analytics?days=7' | grep '"page_views":1'; then
             tail -100 /tmp/lb26-server.log
