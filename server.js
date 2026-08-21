@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
-import { bootstrapAdmin, digestToken, hashPassword, migrate, pool, verifyPassword } from './db.js';
+import { bootstrapAdmin, digestToken, hashPassword, migrate, pool, validPassword, verifyPassword } from './db.js';
 import { registerRoutes } from './routes.js';
 import { registerEmailRoutes } from './email-routes.js';
 import { registerAnalyticsRoutes } from './analytics-routes.js';
@@ -172,7 +172,7 @@ app.post('/api/admin/users', async (request, response, next) => {
     const password = String(request.body.password || '');
     const role = String(request.body.role || 'staff');
     if (!/^\S+@\S+\.\S+$/.test(email)) return response.status(400).json({ error: 'Enter a valid email address.' });
-    if (password.length < 14) return response.status(400).json({ error: 'Password must be at least 14 characters.' });
+    if (!validPassword(password)) return response.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and special character.' });
     if (!ROLE_PERMISSIONS[role]) return response.status(400).json({ error: 'Invalid role.' });
     const result = await pool.query('INSERT INTO admin_users (email,password_hash,role) VALUES ($1,$2,$3) RETURNING id,email,role,active,created_at', [email, hashPassword(password), role]);
     await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_created', JSON.stringify({ userId: result.rows[0].id, email, role }), request.ip]);
@@ -195,7 +195,7 @@ app.patch('/api/admin/users/:id', async (request, response, next) => {
     const active = request.body.active === undefined ? current.active : request.body.active === true;
     const password = request.body.password === undefined ? null : String(request.body.password);
     if (!ROLE_PERMISSIONS[role]) return response.status(400).json({ error: 'Invalid role.' });
-    if (password !== null && password.length < 14) return response.status(400).json({ error: 'Password must be at least 14 characters.' });
+    if (password !== null && !validPassword(password)) return response.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and special character.' });
     if (id === Number(request.adminSession.user_id) && (!active || role !== 'admin')) return response.status(400).json({ error: 'You cannot deactivate or remove your own admin access.' });
     const otherAdmins = await pool.query("SELECT count(*)::int AS count FROM admin_users WHERE role='admin' AND active=true AND id<>$1", [id]);
     if (current.role === 'admin' && current.active && (!active || role !== 'admin') && otherAdmins.rows[0].count === 0) return response.status(400).json({ error: 'At least one active administrator is required.' });

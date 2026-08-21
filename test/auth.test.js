@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { digestToken, hashPassword, verifyPassword } from '../db.js';
+import { digestToken, hashPassword, validPassword, verifyPassword } from '../db.js';
 
 test('password hashes verify without storing plaintext', () => {
   const password = 'correct horse battery staple';
@@ -8,6 +8,13 @@ test('password hashes verify without storing plaintext', () => {
   assert.equal(stored.includes(password), false);
   assert.equal(verifyPassword(password, stored), true);
   assert.equal(verifyPassword('wrong password', stored), false);
+});
+
+test('admin passwords require length, uppercase, and special characters', () => {
+  assert.equal(validPassword('Campaign!'), true);
+  assert.equal(validPassword('campaign!'), false);
+  assert.equal(validPassword('Campaign1'), false);
+  assert.equal(validPassword('Camp!1'), false);
 });
 
 test('session tokens are stored as deterministic digests', () => {

@@ -34,7 +34,9 @@ jobs:
           test -n "$POSTGRES_USER"
           test -n "$POSTGRES_PASSWORD"
           test -n "$ADMIN_EMAIL"
-          test "${#ADMIN_PASSWORD}" -ge 14
+          test "${#ADMIN_PASSWORD}" -ge 8
+          [[ "$ADMIN_PASSWORD" =~ [A-Z] ]]
+          [[ "$ADMIN_PASSWORD" =~ [^A-Za-z0-9] ]]
           umask 077
           {
             printf 'POSTGRES_DB=%s\n' "$POSTGRES_DB"

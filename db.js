@@ -22,6 +22,7 @@ export function verifyPassword(password, stored) {
 }
 
 export function digestToken(token) { return crypto.createHash('sha256').update(token).digest('hex'); }
+export function validPassword(password) { return String(password).length >= 8 && /[A-Z]/.test(password) && /[^A-Za-z0-9]/.test(password); }
 
 export async function migrate() {
   const client = await pool.connect();
@@ -46,7 +47,7 @@ export async function bootstrapAdmin() {
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!email || !password) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required');
-  if (password.length < 14) throw new Error('ADMIN_PASSWORD must be at least 14 characters');
+  if (!validPassword(password)) throw new Error('ADMIN_PASSWORD must be at least 8 characters with an uppercase letter and special character');
   if (process.env.SYNC_ADMIN_CREDENTIALS === 'true') {
     const existing = await pool.query('SELECT id,email,password_hash,active FROM admin_users ORDER BY id LIMIT 1');
     if (existing.rowCount) {
