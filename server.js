@@ -57,7 +57,7 @@ async function requireAdmin(request, response, next) {
   try {
     request.adminSession ||= await readSession(request);
     if (!request.adminSession) {
-      if (request.path.startsWith('/api/')) return response.status(401).json({ error: 'Authentication required.' });
+      if (request.originalUrl.startsWith('/api/')) return response.status(401).json({ error: 'Authentication required.' });
       return response.redirect(303, '/admin/login');
     }
     next();
