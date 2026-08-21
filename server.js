@@ -58,7 +58,8 @@ async function requireAdmin(request, response, next) {
     request.adminSession ||= await readSession(request);
     if (!request.adminSession) {
       if (request.originalUrl.startsWith('/api/')) return response.status(401).json({ error: 'Authentication required.' });
-      return response.redirect(303, '/admin/login');
+      const destination = request.originalUrl === '/preview' ? '?next=%2Fpreview' : '';
+      return response.redirect(303, `/admin/login${destination}`);
     }
     next();
   } catch (error) { next(error); }
@@ -107,7 +108,8 @@ app.get('/health', async (_request, response) => {
 
 app.get('/admin/login', async (request, response, next) => {
   try {
-    if (await readSession(request)) return response.redirect(303, '/admin');
+    const destination = request.query.next === '/preview' ? '/preview' : '/admin';
+    if (await readSession(request)) return response.redirect(303, destination);
     response.sendFile(path.join(root, 'admin', 'login.html'));
   } catch (error) { next(error); }
 });
@@ -137,12 +139,13 @@ app.post('/admin/login', async (request, response, next) => {
     if (!loginAllowed(request.ip)) return response.status(429).send('Too many login attempts. Try again later.');
     const username = String(request.body.username || request.body.email || '').trim();
     const password = String(request.body.password || '');
+    const destination = request.body.next === '/preview' ? '/preview' : '/admin';
     const result = await pool.query('SELECT id,username,email,password_hash FROM admin_users WHERE (lower(username)=lower($1) OR lower(email)=lower($1)) AND active=true', [username]);
     const user = result.rows[0];
     if (!user || !verifyPassword(password, user.password_hash)) {
       loginAttempts.set(request.ip, [...(loginAttempts.get(request.ip) || []), Date.now()]);
       await pool.query('INSERT INTO audit_events (action,metadata,ip_address) VALUES ($1,$2,$3)', ['admin.login_failed', JSON.stringify({ username }), request.ip]);
-      return response.redirect(303, '/admin/login?error=1');
+      return response.redirect(303, `/admin/login?error=1${destination === '/preview' ? '&next=%2Fpreview' : ''}`);
     }
     loginAttempts.delete(request.ip);
     const token = crypto.randomBytes(32).toString('base64url');
@@ -151,7 +154,7 @@ app.post('/admin/login', async (request, response, next) => {
     await pool.query('INSERT INTO admin_sessions (user_id,token_digest,csrf_token,expires_at,ip_address,user_agent) VALUES ($1,$2,$3,$4,$5,$6)', [user.id, digestToken(token), csrfToken, expiresAt, request.ip, String(request.get('user-agent') || '').slice(0, 500)]);
     await pool.query('INSERT INTO audit_events (actor_user_id,action,ip_address) VALUES ($1,$2,$3)', [user.id, 'admin.login_succeeded', request.ip]);
     response.setHeader('Set-Cookie', sessionCookie(token, sessionHours * 60 * 60));
-    response.redirect(303, '/admin');
+    response.redirect(303, destination);
   } catch (error) { next(error); }
 });
 
