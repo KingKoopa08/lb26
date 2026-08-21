@@ -110,12 +110,14 @@ app.get('/admin/login', async (request, response, next) => {
   try {
     const destination = request.query.next === '/preview' ? '/preview' : '/admin';
     if (await readSession(request)) return response.redirect(303, destination);
+    response.setHeader('Cache-Control', 'private, no-store');
     response.sendFile(path.join(root, 'admin', 'login.html'));
   } catch (error) { next(error); }
 });
 
 app.use(['/admin', '/api'], (_request, response, next) => {
   response.setHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  if (_request.originalUrl.startsWith('/admin')) response.setHeader('Cache-Control', 'private, no-store');
   next();
 });
 
