@@ -47,7 +47,7 @@ function sessionCookie(token, maxAgeSeconds) {
 async function readSession(request) {
   const token = cookies(request).lb26_admin;
   if (!token) return null;
-  const result = await pool.query(`SELECT s.id, s.csrf_token, s.expires_at, u.id AS user_id, u.email, u.role FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id WHERE s.token_digest=$1 AND s.expires_at>now() AND u.active=true`, [digestToken(token)]);
+  const result = await pool.query(`SELECT s.id, s.csrf_token, s.expires_at, u.id AS user_id, u.username, u.email, u.role FROM admin_sessions s JOIN admin_users u ON u.id=s.user_id WHERE s.token_digest=$1 AND s.expires_at>now() AND u.active=true`, [digestToken(token)]);
   if (!result.rowCount) return null;
   pool.query('UPDATE admin_sessions SET last_seen_at=now() WHERE id=$1', [result.rows[0].id]).catch(() => {});
   return result.rows[0];
@@ -135,13 +135,13 @@ app.use(async (request, response, next) => {
 app.post('/admin/login', async (request, response, next) => {
   try {
     if (!loginAllowed(request.ip)) return response.status(429).send('Too many login attempts. Try again later.');
-    const email = String(request.body.email || '').trim().toLowerCase();
+    const username = String(request.body.username || request.body.email || '').trim();
     const password = String(request.body.password || '');
-    const result = await pool.query('SELECT id,email,password_hash FROM admin_users WHERE lower(email)=$1 AND active=true', [email]);
+    const result = await pool.query('SELECT id,username,email,password_hash FROM admin_users WHERE (lower(username)=lower($1) OR lower(email)=lower($1)) AND active=true', [username]);
     const user = result.rows[0];
     if (!user || !verifyPassword(password, user.password_hash)) {
       loginAttempts.set(request.ip, [...(loginAttempts.get(request.ip) || []), Date.now()]);
-      await pool.query('INSERT INTO audit_events (action,metadata,ip_address) VALUES ($1,$2,$3)', ['admin.login_failed', JSON.stringify({ email }), request.ip]);
+      await pool.query('INSERT INTO audit_events (action,metadata,ip_address) VALUES ($1,$2,$3)', ['admin.login_failed', JSON.stringify({ username }), request.ip]);
       return response.redirect(303, '/admin/login?error=1');
     }
     loginAttempts.delete(request.ip);
@@ -156,11 +156,11 @@ app.post('/admin/login', async (request, response, next) => {
 });
 
 app.use('/api/admin', requireAdmin, authorizeAdminApi);
-app.get('/api/admin/session', (request, response) => response.json({ email: request.adminSession.email, role: request.adminSession.role, permissions: ROLE_PERMISSIONS[request.adminSession.role] || [], csrfToken: request.adminSession.csrf_token }));
+app.get('/api/admin/session', (request, response) => response.json({ username: request.adminSession.username, role: request.adminSession.role, permissions: ROLE_PERMISSIONS[request.adminSession.role] || [], csrfToken: request.adminSession.csrf_token }));
 
 app.get('/api/admin/users', async (_request, response, next) => {
   try {
-    const result = await pool.query('SELECT id,email,role,active,created_at FROM admin_users ORDER BY active DESC, lower(email)');
+    const result = await pool.query('SELECT id,username,role,active,created_at FROM admin_users ORDER BY active DESC, lower(username)');
     response.json({ users: result.rows, roles: Object.keys(ROLE_PERMISSIONS) });
   } catch (error) { next(error); }
 });
@@ -168,17 +168,17 @@ app.get('/api/admin/users', async (_request, response, next) => {
 app.post('/api/admin/users', async (request, response, next) => {
   try {
     if (request.get('x-csrf-token') !== request.adminSession.csrf_token) return response.status(403).json({ error: 'Invalid request token.' });
-    const email = String(request.body.email || '').trim().toLowerCase();
+    const username = String(request.body.username || '').trim();
     const password = String(request.body.password || '');
     const role = String(request.body.role || 'staff');
-    if (!/^\S+@\S+\.\S+$/.test(email)) return response.status(400).json({ error: 'Enter a valid email address.' });
+    if (!/^[A-Za-z][A-Za-z0-9._-]{1,49}$/.test(username)) return response.status(400).json({ error: 'Username must be 2–50 characters and start with a letter.' });
     if (!validPassword(password)) return response.status(400).json({ error: 'Password must be at least 8 characters with an uppercase letter and special character.' });
     if (!ROLE_PERMISSIONS[role]) return response.status(400).json({ error: 'Invalid role.' });
-    const result = await pool.query('INSERT INTO admin_users (email,password_hash,role) VALUES ($1,$2,$3) RETURNING id,email,role,active,created_at', [email, hashPassword(password), role]);
-    await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_created', JSON.stringify({ userId: result.rows[0].id, email, role }), request.ip]);
+    const result = await pool.query('INSERT INTO admin_users (username,password_hash,role) VALUES ($1,$2,$3) RETURNING id,username,role,active,created_at', [username, hashPassword(password), role]);
+    await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_created', JSON.stringify({ userId: result.rows[0].id, username, role }), request.ip]);
     response.status(201).json({ user: result.rows[0] });
   } catch (error) {
-    if (error.code === '23505') return response.status(409).json({ error: 'A user with that email already exists.' });
+    if (error.code === '23505') return response.status(409).json({ error: 'That username is already taken.' });
     next(error);
   }
 });
@@ -188,7 +188,7 @@ app.patch('/api/admin/users/:id', async (request, response, next) => {
     if (request.get('x-csrf-token') !== request.adminSession.csrf_token) return response.status(403).json({ error: 'Invalid request token.' });
     const id = Number(request.params.id);
     if (!Number.isSafeInteger(id) || id < 1) return response.status(400).json({ error: 'Invalid user.' });
-    const found = await pool.query('SELECT id,email,role,active FROM admin_users WHERE id=$1', [id]);
+    const found = await pool.query('SELECT id,username,role,active FROM admin_users WHERE id=$1', [id]);
     if (!found.rowCount) return response.status(404).json({ error: 'User not found.' });
     const current = found.rows[0];
     const role = request.body.role === undefined ? current.role : String(request.body.role);
@@ -200,8 +200,8 @@ app.patch('/api/admin/users/:id', async (request, response, next) => {
     const otherAdmins = await pool.query("SELECT count(*)::int AS count FROM admin_users WHERE role='admin' AND active=true AND id<>$1", [id]);
     if (current.role === 'admin' && current.active && (!active || role !== 'admin') && otherAdmins.rows[0].count === 0) return response.status(400).json({ error: 'At least one active administrator is required.' });
     const result = password === null
-      ? await pool.query('UPDATE admin_users SET role=$1,active=$2 WHERE id=$3 RETURNING id,email,role,active,created_at', [role, active, id])
-      : await pool.query('UPDATE admin_users SET role=$1,active=$2,password_hash=$3 WHERE id=$4 RETURNING id,email,role,active,created_at', [role, active, hashPassword(password), id]);
+      ? await pool.query('UPDATE admin_users SET role=$1,active=$2 WHERE id=$3 RETURNING id,username,role,active,created_at', [role, active, id])
+      : await pool.query('UPDATE admin_users SET role=$1,active=$2,password_hash=$3 WHERE id=$4 RETURNING id,username,role,active,created_at', [role, active, hashPassword(password), id]);
     if (!active || password !== null || role !== current.role) await pool.query('DELETE FROM admin_sessions WHERE user_id=$1 AND id<>$2', [id, request.adminSession.id]);
     await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_updated', JSON.stringify({ userId: id, role, active, passwordReset: password !== null }), request.ip]);
     response.json({ user: result.rows[0] });

@@ -132,7 +132,7 @@ export function registerRoutes(app, { pool, requireAdmin }) {
       const [contact, requests, notes, rsvps, tasks] = await Promise.all([
         pool.query('SELECT * FROM contacts WHERE id=$1',[id]),
         pool.query('SELECT * FROM crm_requests WHERE contact_id=$1 ORDER BY created_at DESC',[id]),
-        pool.query(`SELECT n.*,u.email author_email FROM contact_notes n LEFT JOIN admin_users u ON u.id=n.author_user_id WHERE n.contact_id=$1 ORDER BY n.created_at DESC`,[id]),
+        pool.query(`SELECT n.*,COALESCE(u.username,u.email) author_email FROM contact_notes n LEFT JOIN admin_users u ON u.id=n.author_user_id WHERE n.contact_id=$1 ORDER BY n.created_at DESC`,[id]),
         pool.query(`SELECT r.*,e.title,e.starts_at FROM event_rsvps r JOIN events e ON e.id=r.event_id WHERE r.contact_id=$1 ORDER BY e.starts_at DESC`,[id]),
         pool.query('SELECT * FROM follow_up_tasks WHERE contact_id=$1 ORDER BY completed_at NULLS FIRST,due_at',[id]),
       ]);

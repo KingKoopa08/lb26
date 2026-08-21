@@ -115,7 +115,7 @@ export function registerEmailRoutes(app, { pool, requireAdmin }) {
       else if (folder==='spam') where.push(`c.status='spam'`);
       else where.push(`c.status='open'`);
       if (clean(request.query.q,100)) { values.push(`%${clean(request.query.q,100)}%`); where.push(`concat_ws(' ',c.subject,m.from_address,m.text_body,ct.first_name,ct.last_name,ct.email) ILIKE $${values.length}`); }
-      const result=await pool.query(`SELECT c.*,ct.first_name,ct.last_name,ct.email contact_email,u.email assigned_email,m.from_address,m.text_body preview FROM email_conversations c LEFT JOIN contacts ct ON ct.id=c.contact_id LEFT JOIN admin_users u ON u.id=c.assigned_user_id LEFT JOIN LATERAL (SELECT from_address,text_body FROM email_messages WHERE conversation_id=c.id AND direction='inbound' ORDER BY created_at DESC LIMIT 1) m ON true WHERE ${where.join(' AND ')} ORDER BY c.unread DESC,c.last_message_at DESC LIMIT 200`,values);
+      const result=await pool.query(`SELECT c.*,ct.first_name,ct.last_name,ct.email contact_email,COALESCE(u.username,u.email) assigned_email,m.from_address,m.text_body preview FROM email_conversations c LEFT JOIN contacts ct ON ct.id=c.contact_id LEFT JOIN admin_users u ON u.id=c.assigned_user_id LEFT JOIN LATERAL (SELECT from_address,text_body FROM email_messages WHERE conversation_id=c.id AND direction='inbound' ORDER BY created_at DESC LIMIT 1) m ON true WHERE ${where.join(' AND ')} ORDER BY c.unread DESC,c.last_message_at DESC LIMIT 200`,values);
       response.json({ conversations: result.rows, enabled: configured() });
     } catch(error){ next(error); }
   });
@@ -126,12 +126,12 @@ export function registerEmailRoutes(app, { pool, requireAdmin }) {
       const client=await pool.connect();
       try{
         await client.query('BEGIN');
-        const conversation=await client.query(`SELECT c.*,ct.first_name,ct.last_name,ct.email contact_email,u.email assigned_email FROM email_conversations c LEFT JOIN contacts ct ON ct.id=c.contact_id LEFT JOIN admin_users u ON u.id=c.assigned_user_id WHERE c.id=$1`,[id]);
+        const conversation=await client.query(`SELECT c.*,ct.first_name,ct.last_name,ct.email contact_email,COALESCE(u.username,u.email) assigned_email FROM email_conversations c LEFT JOIN contacts ct ON ct.id=c.contact_id LEFT JOIN admin_users u ON u.id=c.assigned_user_id WHERE c.id=$1`,[id]);
         if(!conversation.rowCount){await client.query('ROLLBACK');return response.status(404).json({error:'Conversation not found.'});}
         const [messages,notes,users]=await Promise.all([
           client.query(`SELECT m.*,COALESCE(json_agg(a ORDER BY a.id) FILTER (WHERE a.id IS NOT NULL),'[]') attachments FROM email_messages m LEFT JOIN email_attachments a ON a.message_id=m.id WHERE m.conversation_id=$1 GROUP BY m.id ORDER BY m.created_at`,[id]),
-          client.query(`SELECT n.*,u.email author_email FROM email_internal_notes n LEFT JOIN admin_users u ON u.id=n.author_user_id WHERE n.conversation_id=$1 ORDER BY n.created_at`,[id]),
-          client.query(`SELECT id,email FROM admin_users WHERE active=true ORDER BY email`),
+          client.query(`SELECT n.*,COALESCE(u.username,u.email) author_email FROM email_internal_notes n LEFT JOIN admin_users u ON u.id=n.author_user_id WHERE n.conversation_id=$1 ORDER BY n.created_at`,[id]),
+          client.query(`SELECT id,username FROM admin_users WHERE active=true ORDER BY lower(username)`),
         ]);
         await client.query(`UPDATE email_conversations SET unread=false,updated_at=now() WHERE id=$1`,[id]);
         await client.query('COMMIT');

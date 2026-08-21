@@ -63,6 +63,6 @@ export async function bootstrapAdmin() {
     }
   }
   if ((await pool.query('SELECT id FROM admin_users LIMIT 1')).rowCount) return;
-  await pool.query('INSERT INTO admin_users (email, password_hash, role) VALUES ($1, $2, $3)', [email, hashPassword(password), 'admin']);
+  await pool.query('INSERT INTO admin_users (username, email, password_hash, role) VALUES ($1, $2, $3, $4)', [email.split('@')[0], email, hashPassword(password), 'admin']);
   console.info(`Created initial admin user: ${email}`);
 }
