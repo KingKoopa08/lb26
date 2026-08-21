@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import helmet from 'helmet';
-import { bootstrapAdmin, digestToken, migrate, pool, verifyPassword } from './db.js';
+import { bootstrapAdmin, digestToken, hashPassword, migrate, pool, verifyPassword } from './db.js';
 import { registerRoutes } from './routes.js';
 import { registerEmailRoutes } from './email-routes.js';
 import { registerAnalyticsRoutes } from './analytics-routes.js';
@@ -55,13 +55,40 @@ async function readSession(request) {
 
 async function requireAdmin(request, response, next) {
   try {
-    request.adminSession = await readSession(request);
+    request.adminSession ||= await readSession(request);
     if (!request.adminSession) {
       if (request.path.startsWith('/api/')) return response.status(401).json({ error: 'Authentication required.' });
       return response.redirect(303, '/admin/login');
     }
     next();
   } catch (error) { next(error); }
+}
+
+const ROLE_PERMISSIONS = {
+  admin: ['dashboard', 'analytics', 'crm', 'email', 'events', 'export', 'users'],
+  manager: ['dashboard', 'analytics', 'crm', 'email', 'events', 'export'],
+  staff: ['dashboard', 'crm', 'email', 'events'],
+  viewer: ['dashboard', 'analytics', 'crm:read', 'email:read', 'events:read'],
+};
+
+function hasPermission(session, permission) {
+  const permissions = ROLE_PERMISSIONS[session?.role] || [];
+  return permissions.includes(permission) || permissions.includes(permission.split(':')[0]);
+}
+
+function authorizeAdminApi(request, response, next) {
+  const path = request.path;
+  const read = request.method === 'GET';
+  let permission = read ? 'crm:read' : 'crm';
+  if (path === '/session') permission = null;
+  else if (path.startsWith('/users')) permission = 'users';
+  else if (path.startsWith('/analytics')) permission = 'analytics';
+  else if (path.startsWith('/email')) permission = read ? 'email:read' : 'email';
+  else if (path.startsWith('/events')) permission = read ? 'events:read' : 'events';
+  else if (path.startsWith('/export')) permission = 'export';
+  else if (path === '/dashboard') permission = 'dashboard';
+  if (!permission || hasPermission(request.adminSession, permission)) return next();
+  return response.status(403).json({ error: 'Your role does not have access to this action.' });
 }
 
 function loginAllowed(ip) {
@@ -128,7 +155,58 @@ app.post('/admin/login', async (request, response, next) => {
   } catch (error) { next(error); }
 });
 
-app.get('/api/admin/session', requireAdmin, (request, response) => response.json({ email: request.adminSession.email, role: request.adminSession.role, csrfToken: request.adminSession.csrf_token }));
+app.use('/api/admin', requireAdmin, authorizeAdminApi);
+app.get('/api/admin/session', (request, response) => response.json({ email: request.adminSession.email, role: request.adminSession.role, permissions: ROLE_PERMISSIONS[request.adminSession.role] || [], csrfToken: request.adminSession.csrf_token }));
+
+app.get('/api/admin/users', async (_request, response, next) => {
+  try {
+    const result = await pool.query('SELECT id,email,role,active,created_at FROM admin_users ORDER BY active DESC, lower(email)');
+    response.json({ users: result.rows, roles: Object.keys(ROLE_PERMISSIONS) });
+  } catch (error) { next(error); }
+});
+
+app.post('/api/admin/users', async (request, response, next) => {
+  try {
+    if (request.get('x-csrf-token') !== request.adminSession.csrf_token) return response.status(403).json({ error: 'Invalid request token.' });
+    const email = String(request.body.email || '').trim().toLowerCase();
+    const password = String(request.body.password || '');
+    const role = String(request.body.role || 'staff');
+    if (!/^\S+@\S+\.\S+$/.test(email)) return response.status(400).json({ error: 'Enter a valid email address.' });
+    if (password.length < 14) return response.status(400).json({ error: 'Password must be at least 14 characters.' });
+    if (!ROLE_PERMISSIONS[role]) return response.status(400).json({ error: 'Invalid role.' });
+    const result = await pool.query('INSERT INTO admin_users (email,password_hash,role) VALUES ($1,$2,$3) RETURNING id,email,role,active,created_at', [email, hashPassword(password), role]);
+    await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_created', JSON.stringify({ userId: result.rows[0].id, email, role }), request.ip]);
+    response.status(201).json({ user: result.rows[0] });
+  } catch (error) {
+    if (error.code === '23505') return response.status(409).json({ error: 'A user with that email already exists.' });
+    next(error);
+  }
+});
+
+app.patch('/api/admin/users/:id', async (request, response, next) => {
+  try {
+    if (request.get('x-csrf-token') !== request.adminSession.csrf_token) return response.status(403).json({ error: 'Invalid request token.' });
+    const id = Number(request.params.id);
+    if (!Number.isSafeInteger(id) || id < 1) return response.status(400).json({ error: 'Invalid user.' });
+    const found = await pool.query('SELECT id,email,role,active FROM admin_users WHERE id=$1', [id]);
+    if (!found.rowCount) return response.status(404).json({ error: 'User not found.' });
+    const current = found.rows[0];
+    const role = request.body.role === undefined ? current.role : String(request.body.role);
+    const active = request.body.active === undefined ? current.active : request.body.active === true;
+    const password = request.body.password === undefined ? null : String(request.body.password);
+    if (!ROLE_PERMISSIONS[role]) return response.status(400).json({ error: 'Invalid role.' });
+    if (password !== null && password.length < 14) return response.status(400).json({ error: 'Password must be at least 14 characters.' });
+    if (id === Number(request.adminSession.user_id) && (!active || role !== 'admin')) return response.status(400).json({ error: 'You cannot deactivate or remove your own admin access.' });
+    const otherAdmins = await pool.query("SELECT count(*)::int AS count FROM admin_users WHERE role='admin' AND active=true AND id<>$1", [id]);
+    if (current.role === 'admin' && current.active && (!active || role !== 'admin') && otherAdmins.rows[0].count === 0) return response.status(400).json({ error: 'At least one active administrator is required.' });
+    const result = password === null
+      ? await pool.query('UPDATE admin_users SET role=$1,active=$2 WHERE id=$3 RETURNING id,email,role,active,created_at', [role, active, id])
+      : await pool.query('UPDATE admin_users SET role=$1,active=$2,password_hash=$3 WHERE id=$4 RETURNING id,email,role,active,created_at', [role, active, hashPassword(password), id]);
+    if (!active || password !== null || role !== current.role) await pool.query('DELETE FROM admin_sessions WHERE user_id=$1 AND id<>$2', [id, request.adminSession.id]);
+    await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [request.adminSession.user_id, 'admin.user_updated', JSON.stringify({ userId: id, role, active, passwordReset: password !== null }), request.ip]);
+    response.json({ user: result.rows[0] });
+  } catch (error) { next(error); }
+});
 
 registerRoutes(app, { pool, requireAdmin });
 registerEmailRoutes(app, { pool, requireAdmin });
@@ -146,6 +224,7 @@ app.post('/admin/logout', requireAdmin, async (request, response, next) => {
 
 app.get('/admin/admin.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.css')));
 app.get('/admin/email.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'email.css')));
+app.get('/admin/users.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'users.css')));
 app.get('/admin/analytics.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'analytics.css')));
 app.get('/admin/admin.js', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.js')));
 app.get('/admin', requireAdmin, (_request, response) => response.sendFile(path.join(root, 'admin', 'index.html')));
