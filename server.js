@@ -66,7 +66,7 @@ async function requireAdmin(request, response, next) {
 }
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'analytics', 'crm', 'email', 'events', 'export', 'users'],
+  admin: ['dashboard', 'analytics', 'crm', 'email', 'events', 'export', 'users', 'audit'],
   manager: ['dashboard', 'analytics', 'crm', 'email', 'events', 'export'],
   staff: ['dashboard', 'crm', 'email', 'events'],
   viewer: ['dashboard', 'analytics', 'crm:read', 'email:read', 'events:read'],
@@ -83,12 +83,18 @@ function authorizeAdminApi(request, response, next) {
   let permission = read ? 'crm:read' : 'crm';
   if (path === '/session') permission = null;
   else if (path.startsWith('/users')) permission = 'users';
+  else if (path.startsWith('/audit')) permission = 'audit';
   else if (path.startsWith('/analytics')) permission = 'analytics';
   else if (path.startsWith('/email')) permission = read ? 'email:read' : 'email';
   else if (path.startsWith('/events')) permission = read ? 'events:read' : 'events';
   else if (path.startsWith('/export')) permission = 'export';
   else if (path === '/dashboard') permission = 'dashboard';
   if (!permission || hasPermission(request.adminSession, permission)) return next();
+  pool.query(
+    `INSERT INTO audit_events (actor_user_id,action,target_type,target_id,metadata,ip_address)
+     VALUES ($1,'admin.access_denied','api_route',$2,$3,$4)`,
+    [request.adminSession.user_id, path, JSON.stringify({ method: request.method, requiredPermission: permission }), request.ip],
+  ).catch((error) => console.error(`Audit write failed: ${error.message}`));
   return response.status(403).json({ error: 'Your role does not have access to this action.' });
 }
 
@@ -146,7 +152,7 @@ app.post('/admin/login', async (request, response, next) => {
     const user = result.rows[0];
     if (!user || !verifyPassword(password, user.password_hash)) {
       loginAttempts.set(request.ip, [...(loginAttempts.get(request.ip) || []), Date.now()]);
-      await pool.query('INSERT INTO audit_events (action,metadata,ip_address) VALUES ($1,$2,$3)', ['admin.login_failed', JSON.stringify({ username }), request.ip]);
+      await pool.query('INSERT INTO audit_events (action,metadata,ip_address) VALUES ($1,$2,$3)', ['admin.login_failed', JSON.stringify({ username, userAgent: String(request.get('user-agent') || '').slice(0, 300) }), request.ip]);
       return response.redirect(303, `/admin/login?error=1${destination === '/preview' ? '&next=%2Fpreview' : ''}`);
     }
     loginAttempts.delete(request.ip);
@@ -154,14 +160,45 @@ app.post('/admin/login', async (request, response, next) => {
     const csrfToken = crypto.randomBytes(24).toString('base64url');
     const expiresAt = new Date(Date.now() + sessionHours * 60 * 60 * 1000);
     await pool.query('INSERT INTO admin_sessions (user_id,token_digest,csrf_token,expires_at,ip_address,user_agent) VALUES ($1,$2,$3,$4,$5,$6)', [user.id, digestToken(token), csrfToken, expiresAt, request.ip, String(request.get('user-agent') || '').slice(0, 500)]);
-    await pool.query('INSERT INTO audit_events (actor_user_id,action,ip_address) VALUES ($1,$2,$3)', [user.id, 'admin.login_succeeded', request.ip]);
+    await pool.query('INSERT INTO audit_events (actor_user_id,action,metadata,ip_address) VALUES ($1,$2,$3,$4)', [user.id, 'admin.login_succeeded', JSON.stringify({ userAgent: String(request.get('user-agent') || '').slice(0, 300) }), request.ip]);
     response.setHeader('Set-Cookie', sessionCookie(token, sessionHours * 60 * 60));
     response.redirect(303, destination);
   } catch (error) { next(error); }
 });
 
 app.use('/api/admin', requireAdmin, authorizeAdminApi);
+app.use('/api/admin', (request, response, next) => {
+  if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method)) return next();
+  response.on('finish', () => {
+    if (response.statusCode >= 400) return;
+    pool.query(
+      `INSERT INTO audit_events (actor_user_id,action,target_type,target_id,metadata,ip_address)
+       VALUES ($1,'admin.api_write','api_route',$2,$3,$4)`,
+      [request.adminSession.user_id, request.path, JSON.stringify({ method: request.method, status: response.statusCode, userAgent: String(request.get('user-agent') || '').slice(0, 300) }), request.ip],
+    ).catch((error) => console.error(`Audit write failed: ${error.message}`));
+  });
+  next();
+});
 app.get('/api/admin/session', (request, response) => response.json({ username: request.adminSession.username, role: request.adminSession.role, permissions: ROLE_PERMISSIONS[request.adminSession.role] || [], csrfToken: request.adminSession.csrf_token }));
+
+app.get('/api/admin/audit', async (request, response, next) => {
+  try {
+    const query = String(request.query.q || '').trim().slice(0, 100);
+    const values = [];
+    let where = '';
+    if (query) {
+      values.push(`%${query}%`);
+      where = `WHERE concat_ws(' ',a.action,a.target_type,a.target_id,u.username,a.ip_address::text,a.metadata::text) ILIKE $1`;
+    }
+    const result = await pool.query(
+      `SELECT a.id,a.action,a.target_type,a.target_id,a.metadata,a.ip_address,a.created_at,u.username
+       FROM audit_events a LEFT JOIN admin_users u ON u.id=a.actor_user_id
+       ${where} ORDER BY a.created_at DESC LIMIT 250`,
+      values,
+    );
+    response.json({ events: result.rows });
+  } catch (error) { next(error); }
+});
 
 app.get('/api/admin/users', async (_request, response, next) => {
   try {
@@ -230,6 +267,7 @@ app.post('/admin/logout', requireAdmin, async (request, response, next) => {
 app.get('/admin/admin.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.css')));
 app.get('/admin/email.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'email.css')));
 app.get('/admin/users.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'users.css')));
+app.get('/admin/audit.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'audit.css')));
 app.get('/admin/analytics.css', (_request, response) => response.sendFile(path.join(root, 'admin', 'analytics.css')));
 app.get('/admin/admin.js', (_request, response) => response.sendFile(path.join(root, 'admin', 'admin.js')));
 app.get('/admin', requireAdmin, (_request, response) => response.sendFile(path.join(root, 'admin', 'index.html')));

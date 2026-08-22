@@ -7,6 +7,10 @@ const usersStyles = document.createElement("link");
 usersStyles.rel = "stylesheet";
 usersStyles.href = "/admin/users.css";
 document.head.append(usersStyles);
+const auditStyles = document.createElement("link");
+auditStyles.rel = "stylesheet";
+auditStyles.href = "/admin/audit.css?v=20260821-1";
+document.head.append(auditStyles);
 const view = document.getElementById("view");
 const modal = document.getElementById("modal");
 const esc = (v) =>
@@ -556,6 +560,14 @@ function passwordForm(id) {
       }
     });
 }
+async function audit(query = "") {
+  const data = await api(`/api/admin/audit?q=${encodeURIComponent(query)}`);
+  view.innerHTML = `<div class="page-heading"><div><p class="eyebrow">SECURITY</p><h1>Audit log</h1><p class="muted">Admin-only history of sign-ins, account changes, and campaign operations.</p></div></div><form class="audit-search" id="audit-search"><input name="q" value="${esc(query)}" placeholder="Search user, action, IP address, target, or details"><button>Search</button></form><section class="panel"><div class="audit-list">${data.events.length ? data.events.map((event) => `<article class="audit-row"><div><strong>${esc(event.action.replaceAll(".", " "))}</strong><small>${date(event.created_at)}</small></div><div><strong>${esc(event.username || event.metadata?.username || "Unknown")}</strong><small>${esc(event.ip_address || "No IP")}</small></div><div><strong>${esc([event.target_type, event.target_id].filter(Boolean).join(" #") || "System")}</strong><small>${esc(event.metadata?.method || "")}</small></div><div class="audit-meta">${esc(JSON.stringify(event.metadata || {}, null, 2))}</div></article>`).join("") : '<p class="empty">No audit events match this search.</p>'}</div></section>`;
+  document.getElementById("audit-search").addEventListener("submit", (event) => {
+    event.preventDefault();
+    audit(new FormData(event.target).get("q"));
+  });
+}
 async function render() {
   document
     .querySelectorAll("[data-view]")
@@ -563,7 +575,7 @@ async function render() {
       b.classList.toggle("active", b.dataset.view === state.view),
     );
   try {
-    await { dashboard, analytics, requests, email, events, users }[
+    await { dashboard, analytics, requests, email, events, users, audit }[
       state.view
     ]();
   } catch (error) {
@@ -600,6 +612,7 @@ api("/api/admin/session")
       email: "email",
       events: "events",
       users: "users",
+      audit: "audit",
     };
     document.querySelectorAll("[data-view]").forEach((el) => {
       const permission = viewPermissions[el.dataset.view];
